@@ -1,0 +1,184 @@
+import { factory } from "@/utils/ConfigLog4j";
+import { DayOfWeek } from "@/utils/DayOfWeek";
+
+export class DateService {
+  private logger = factory.getLogger("services.DateService");
+  public isStartOfWeek(date: Date) {
+    return date.getDay() == 1;
+  }
+
+  public isEndOfWeek(date: Date) {
+    return date.getDay() == 0;
+  }
+
+  public getStartOfMonth(date: Date) {
+    return this.createDate(date.getFullYear(), date.getMonth(), 1);
+  }
+
+  public getEndOfMonth(date: Date) {
+    return this.createDate(date.getFullYear(), date.getMonth() + 1, 0);
+  }
+
+  public getStartOfWeek(date: Date): Date {
+    let startOfWeek = date;
+    while (!this.isStartOfWeek(startOfWeek)) {
+      startOfWeek = this.addDays(startOfWeek, -1);
+    }
+    return startOfWeek;
+  }
+  public getEndOfWeek(date: Date): Date {
+    let endOfWeek = date;
+    while (!this.isEndOfWeek(endOfWeek)) {
+      endOfWeek = this.addDays(endOfWeek, +1);
+    }
+    return endOfWeek;
+  }
+
+  public getDayOfWeek(date: Date): DayOfWeek {
+    switch (date.getDay()) {
+      case 1:
+        return DayOfWeek.MONDAY;
+      case 2:
+        return DayOfWeek.TUESDAY;
+      case 3:
+        return DayOfWeek.WEDNESDAY;
+      case 4:
+        return DayOfWeek.THURSDAY;
+      case 5:
+        return DayOfWeek.FRIDAY;
+      case 6:
+        return DayOfWeek.SATURDAY;
+      case 0:
+        return DayOfWeek.SUNDAY;
+      default:
+        throw new Error("Unrecognized date " + date);
+    }
+  }
+  public getDayOfWeekLabel(date: Date): string {
+    switch (this.getDayOfWeek(date)) {
+      case DayOfWeek.MONDAY:
+        return "L";
+      case DayOfWeek.TUESDAY:
+        return "M";
+      case DayOfWeek.WEDNESDAY:
+        return "M";
+      case DayOfWeek.THURSDAY:
+        return "G";
+      case DayOfWeek.FRIDAY:
+        return "V";
+      case DayOfWeek.SATURDAY:
+        return "S";
+      case DayOfWeek.SUNDAY:
+        return "D";
+    }
+  }
+
+  /**
+   * Parse a string in the format "yyyy-MM-dd" or "yyyy-MM"
+   * @param text
+   */
+  public parse(text: string): Date {
+    let year = 0;
+    let month = 0;
+    let day = 1;
+
+    try {
+      const values = text.split("-");
+      year = parseInt(values[0]);
+      month = parseInt(values[1]) - 1;
+      if (values.length == 3) {
+        day = parseInt(values[2]);
+      }
+    } catch (e) {
+      throw Error("Text " + text + " is not a valid date." + e);
+    }
+    return this.createDate(year, month, day);
+  }
+
+  public format(date: Date): string {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+
+    let formatted = year + "-";
+    if (month < 10) {
+      formatted += "0";
+    }
+    formatted += month + "-";
+    if (day < 10) {
+      formatted += "0";
+    }
+    formatted += day;
+    return formatted;
+  }
+
+  public formatShort(date: Date) {
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+
+    let formatted = "";
+    if (day < 10) {
+      formatted += "0";
+    }
+    formatted += day + "-";
+    if (month < 10) {
+      formatted += "0";
+    }
+    formatted += month;
+    return formatted;
+  }
+
+  public isValidDate(date: Date): boolean {
+    return date instanceof Date && !isNaN(date.getTime());
+  }
+
+  public range(from: Date, to: Date): Array<Date> {
+    const range = Array<Date>();
+
+    let currentDate = this.clone(from);
+    while (!this.isAfter(currentDate, to)) {
+      range.push(currentDate);
+      currentDate = this.addDays(currentDate, 1);
+    }
+    return range;
+  }
+
+  public isBefore(date1: Date, date2: Date): boolean {
+    return date1 < date2;
+  }
+
+  public isAfter(date1: Date, date2: Date): boolean {
+    return date1 > date2;
+  }
+
+  public createDate(year: number, month: number, day: number): Date {
+    const date = new Date(year, month, day);
+    if (!this.isValidDate(date)) {
+      throw Error(
+        "Not a valid date. [" + year + "] [" + month + "] [" + day + "]"
+      );
+    }
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
+
+  public getWeek(date: Date): Array<Date> {
+    this.logger.debug(() => `Input: ${this.format(date)}`);
+    const startOfWeek = this.getStartOfWeek(date);
+    const endOfWeek = this.getEndOfWeek(date);
+    this.logger.debug(
+      () => `Output: ${this.format(startOfWeek)} - ${this.format(endOfWeek)}`
+    );
+    return this.range(startOfWeek, endOfWeek);
+  }
+
+  private clone(date: Date): Date {
+    return new Date(date.getTime());
+  }
+
+  public addDays(date: Date, days: number): Date {
+    const clone = this.clone(date);
+    clone.setDate(clone.getDate() + days);
+    return clone;
+  }
+}
