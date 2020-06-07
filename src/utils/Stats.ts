@@ -98,4 +98,4 @@ setInterval(() => {
       );
       StatsCollector.getInstance().resetEntry(entry[0]);
     });
-}, 20000);
+}, 10000);

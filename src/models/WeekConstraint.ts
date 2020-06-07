@@ -6,8 +6,8 @@ export class WeekConstraint {
 
   public clone(): WeekConstraint {
     const clone = new WeekConstraint();
-    Array.from(this._constraints.entries()).forEach(entry => {
-        clone._constraints.set(entry[0], entry[1]);
+    Array.from(this._constraints.entries()).forEach((entry) => {
+      clone._constraints.set(entry[0], entry[1]);
     });
     return clone;
   }
@@ -25,6 +25,14 @@ export class WeekConstraint {
 
   private key(dayOfWeek: DayOfWeek, action: Action, type: string) {
     return `${dayOfWeek}_${action}_${type}`;
+  }
+
+  public toString(): string {
+    let output = "";
+    for (const entry of this._constraints.entries()) {
+      output += entry[0] + "=" + entry[1] + ", ";
+    }
+    return output;
   }
 }
 

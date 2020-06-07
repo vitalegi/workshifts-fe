@@ -33,4 +33,8 @@ export class Group {
   public get constraints() {
     return this._constraints;
   }
+  
+  public toString():string {
+    return `id ${this.id} name ${this.name} constraints ${this.constraints}`;
+  }
 }

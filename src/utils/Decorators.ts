@@ -13,23 +13,24 @@ const timestamp = () =>
     ? window.performance.now() + window.performance.timing.navigationStart
     : Date.now();
 
-export function stats() {
+export function stats(className?: string) {
   const logger = factory.getLogger("utils.Decorators.stats");
 
   return function(target: any, key: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
+    const fullName = className != undefined ? `${className}.${key}` : key;
     descriptor.value = function(...args: any[]) {
-      logger.debug(() => `Call ${key} start`);
+      logger.debug(() => `Call ${fullName} start`);
       const startTime = timestamp();
       try {
         const result = originalMethod.apply(this, args);
         const duration = timestamp() - startTime;
-        logger.debug(() => `Call ${key} end [${duration}]`);
-        StatsCollector.addEntry(key, duration);
+        logger.debug(() => `Call ${fullName} end [${duration}]`);
+        StatsCollector.addEntry(fullName, duration);
         return result;
       } catch (error) {
         const duration = timestamp() - startTime;
-        logger.error(() => `Call ${key} failed [${duration}]`);
+        logger.error(() => `Call ${fullName} failed [${duration}]`);
         throw error;
       }
     };
@@ -43,7 +44,6 @@ export function cacheable(
   config?: CacheConfig
 ) {
   const logger = factory.getLogger("utils.Decorators.cacheable");
-
   return function(
     target: any,
     methodName: string,

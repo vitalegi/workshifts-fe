@@ -15,10 +15,10 @@ export class ActionService {
       return ["M", "M*"];
     }
     if (action == Action.AFTERNOON) {
-      return ["P", "P*"];
+      return ["P", "P*", "PJ"];
     }
     if (action == Action.AWAY) {
-      return ["Fer", "L104", "Rec"];
+      return ["F", "Rec" , "Agg", "mal", "/", "L104"];
     }
     if (action == Action.IDLE) {
       return [this.getDefaultLabel()];

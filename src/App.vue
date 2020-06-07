@@ -30,7 +30,7 @@
     </v-app-bar>
 
     <v-content>
-      <WorkShiftTable :context="context" :availableStates="['---', 'M', 'P', 'L104']" />
+      <WorkShiftTable :context="context" />
     </v-content>
   </v-app>
 </template>
@@ -60,8 +60,7 @@ export default class App extends Vue {
     const dateService = ApplicationContext.getInstance().getDateService();
     const context = new WorkContext();
     this.context = context;
-    context.from = dateService.parse("2020-02-04");
-    context.to = dateService.parse("2020-02-05");
+    context.date = dateService.parse("2020-02-01");
 
     App.group(context, 1, "Macro1", App.weekConstraint(0, 1, 1, 1));
     App.group(context, 2, "Macro2", App.weekConstraint(0, 1, 1, 1));

@@ -10,7 +10,7 @@ const timestamp = () =>
 
 export class CacheConfig {
   public maxSize = 1000;
-  public ttl = 300;
+  public ttl = 500;
 
   public static init(maxSize: number, ttl: number): CacheConfig {
     const config = new CacheConfig();
@@ -21,6 +21,23 @@ export class CacheConfig {
 
   public toString():string {
     return `maxSize: ${this.maxSize} ttl: ${this.ttl}`;
+  }
+}
+
+export class CacheConfigFactory {
+
+  private _instance = new CacheConfig() ;
+
+  public maxSize(maxSize:number):CacheConfigFactory{
+    this._instance.maxSize = maxSize;
+    return this;
+  }
+  public ttl(ttl:number):CacheConfigFactory{
+    this._instance.ttl = ttl;
+    return this;
+  }
+  public build():CacheConfig {
+    return this._instance;
   }
 }
 
@@ -150,4 +167,4 @@ setInterval(() => {
     logger.info(() => `CACHE STATS [${cache[0]}] ${cache[1].stats()} ${cache[1].config}`);
     cache[1].resetStats();
   });
-}, 20000);
+}, 10000);

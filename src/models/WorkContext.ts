@@ -5,8 +5,7 @@ import { Subgroup } from "./Subgroup";
 import { Group } from "./Group";
 
 export class WorkContext {
-  private _from: Date;
-  private _to: Date;
+  private _date: Date;
   private _employees: Map<number, Employee>;
   private _groups: Map<number, Group>;
   private _subgroups: Map<number, Subgroup>;
@@ -14,8 +13,7 @@ export class WorkContext {
   private _workShift: WorkShift;
 
   public constructor() {
-    this._from = new Date();
-    this._to = new Date();
+    this._date = new Date();
     this._employees = new Map();
     this._groups = new Map();
     this._subgroups = new Map();
@@ -77,18 +75,13 @@ export class WorkContext {
     return undefined;
   }
 
-  public set from(from: Date) {
-    this._from = from;
+  public set date(date: Date) {
+    this._date = date;
   }
-  public get from() {
-    return this._from;
+  public get date() {
+    return this._date;
   }
-  public set to(to: Date) {
-    this._to = to;
-  }
-  public get to() {
-    return this._to;
-  }
+
   public set employees(employees: Map<number, Employee>) {
     this._employees = employees;
   }

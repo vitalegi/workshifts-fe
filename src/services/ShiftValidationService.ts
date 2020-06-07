@@ -4,6 +4,7 @@ import { ApplicationContext } from "./ApplicationContext";
 import { Action } from "@/models/Action";
 import { Employee } from "@/models/Employee";
 import { Group } from "@/models/Group";
+import { stats } from "@/utils/Decorators";
 
 abstract class AbstractShiftValidator {
   protected dateService = ApplicationContext.getInstance().getDateService();
@@ -34,6 +35,7 @@ abstract class AbstractShiftValidator {
 class TotalShiftsPerWeek extends AbstractShiftValidator {
   private logger = factory.getLogger("services.TotalShiftsPerWeek");
 
+  @stats("ShiftValidationService.TotalShiftsPerWeek")
   public errors(
     employeeId: number | null,
     day: Date,
@@ -78,6 +80,7 @@ class TotalShiftsPerWeek extends AbstractShiftValidator {
 class MaxShiftByTypePerWeek extends AbstractShiftValidator {
   private logger = factory.getLogger("services.MinShiftPerWeek");
 
+  @stats("ShiftValidationService.MaxShiftByTypePerWeek")
   public errors(
     employeeId: number | null,
     day: Date,
@@ -129,6 +132,7 @@ class MaxCarsPerShift extends AbstractShiftValidator {
     this.action = action;
   }
 
+  @stats("ShiftValidationService.MaxCarsPerShift")
   public errors(
     employeeId: number | null,
     day: Date,
@@ -209,16 +213,12 @@ abstract class AbstractMinShiftsPerGroup extends AbstractShiftValidator {
       context
     );
     const action = context.workShift.getAction(employee, day);
-    if (action == Action.MORNING && expectedMinMornings > actualMornings) {
+    if (expectedMinMornings > actualMornings) {
       errors.push(
         `Nel gruppo ${targetGroup.name} al mattino sono richieste almeno ${expectedMinMornings} risorse, presenti ${actualMornings}`
       );
     }
-    if (
-      action == Action.AFTERNOON &&
-      expectedMinAfternoons > actualAfternoons
-    ) {
-      this.logger.info(() => `action ${action} ${Action.AFTERNOON}`);
+    if (expectedMinAfternoons > actualAfternoons) {
       errors.push(
         `Nel gruppo ${targetGroup.name} al pomeriggio sono richieste almeno ${expectedMinAfternoons} risorse, presenti ${actualAfternoons}`
       );
@@ -233,6 +233,15 @@ abstract class AbstractMinShiftsPerGroup extends AbstractShiftValidator {
 }
 
 class MinShiftsPerGroup extends AbstractMinShiftsPerGroup {
+
+  @stats("ShiftValidationService.MinShiftsPerGroup")
+  public errors(
+    employeeId: number | null,
+    day: Date,
+    context: WorkContext
+  ): Array<string> {
+    return super.errors(employeeId, day, context);
+  }
   protected getGroup(
     employee: Employee,
     context: WorkContext
@@ -241,6 +250,15 @@ class MinShiftsPerGroup extends AbstractMinShiftsPerGroup {
   }
 }
 class MinShiftsPerSubGroup extends AbstractMinShiftsPerGroup {
+  
+  @stats("ShiftValidationService.MinShiftsPerSubGroup")
+  public errors(
+    employeeId: number | null,
+    day: Date,
+    context: WorkContext
+  ): Array<string> {
+    return super.errors(employeeId, day, context);
+  }
   protected getGroup(
     employee: Employee,
     context: WorkContext

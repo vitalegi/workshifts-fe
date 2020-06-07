@@ -9,7 +9,16 @@
     </v-row>
     <v-row>
       <v-col>
-        <MonthPicker :initialValue="context.from" @update-date="handleUpdateFromDate" />
+        <MonthPicker
+          :initialValue="context.from"
+          @update-date="handleUpdateFromDate"
+        />
+      </v-col>
+      <v-col>
+        <v-btn v-on:click="clearData()" color="error">Clear</v-btn>
+      </v-col>
+      <v-col>
+        <v-btn v-on:click="randomize()">Randomize</v-btn>
       </v-col>
     </v-row>
     <v-row>
@@ -29,7 +38,9 @@
                   'text-center': true,
                   'start-of-group': true
                 }"
-              >{{ formatHeaderDate(day(dayId)) }}</th>
+              >
+                {{ formatHeaderDate(day(dayId)) }}
+              </th>
             </tr>
             <tr>
               <th class="text-left"></th>
@@ -43,12 +54,16 @@
                   'table-header': true,
                   'text-center': true
                 }"
-              >{{ getDayOfWeekLabel(day(dayId)) }}</th>
+              >
+                {{ getDayOfWeekLabel(day(dayId)) }}
+              </th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="employeeId in employees()" :key="employeeId">
-              <td>{{ employeeId }} - {{ context.getEmployee(employeeId).name }}</td>
+              <td>
+                {{ employeeId }} - {{ context.getEmployee(employeeId).name }}
+              </td>
               <td>{{ getGroupName(employeeId) }}</td>
               <td class="end-of-week">{{ getSubgroupName(employeeId) }}</td>
               <td
@@ -66,7 +81,7 @@
                     <span v-on="onTooltip">
                       <WorkShiftInput
                         :initialValue="getShift(employeeId, day(dayId))"
-                        :items="availableStates"
+                        :items="availableStates()"
                         :hasErrors="true"
                         @update-value="
                           v => handleShift(employeeId, day(dayId), v)
@@ -78,13 +93,15 @@
                     <div
                       :key="error"
                       v-for="error in getEmployeeErrors(employeeId, day(dayId))"
-                    >{{ error }}</div>
+                    >
+                      {{ error }}
+                    </div>
                   </span>
                 </v-tooltip>
                 <WorkShiftInput
                   v-else
                   :initialValue="getShift(employeeId, day(dayId))"
-                  :items="availableStates"
+                  :items="availableStates()"
                   :hasErrors="false"
                   @update-value="v => handleShift(employeeId, day(dayId), v)"
                 />
@@ -104,12 +121,13 @@
                   errors: hasCarsErrors(morningAction(), day(dayId))
                 }"
               >
-                <v-tooltip top v-if="hasCarsErrors(morningAction(), day(dayId))">
+                <v-tooltip
+                  top
+                  v-if="hasCarsErrors(morningAction(), day(dayId))"
+                >
                   <template v-slot:activator="{ on: onTooltip }">
                     <span v-on="onTooltip">
-                      {{
-                      getUsedCars(day(dayId), morningAction())
-                      }}
+                      {{ getUsedCars(day(dayId), morningAction()) }}
                     </span>
                   </template>
                   <span>
@@ -119,13 +137,13 @@
                         morningAction(),
                         day(dayId)
                       )"
-                    >{{ error }}</div>
+                    >
+                      {{ error }}
+                    </div>
                   </span>
                 </v-tooltip>
                 <span v-else>
-                  {{
-                  getUsedCars(day(dayId), morningAction())
-                  }}
+                  {{ getUsedCars(day(dayId), morningAction()) }}
                 </span>
               </td>
             </tr>
@@ -139,7 +157,9 @@
                   'table-header': true,
                   'text-center': true
                 }"
-              >{{ getTotCars() }}</td>
+              >
+                {{ getTotCars() }}
+              </td>
             </tr>
             <tr>
               <td class="text-left" rowspan="2">Pomeriggio</td>
@@ -154,12 +174,13 @@
                   errors: hasCarsErrors(afternoonAction(), day(dayId))
                 }"
               >
-                <v-tooltip top v-if="hasCarsErrors(afternoonAction(), day(dayId))">
+                <v-tooltip
+                  top
+                  v-if="hasCarsErrors(afternoonAction(), day(dayId))"
+                >
                   <template v-slot:activator="{ on: onTooltip }">
                     <span v-on="onTooltip">
-                      {{
-                      getUsedCars(day(dayId), afternoonAction())
-                      }}
+                      {{ getUsedCars(day(dayId), afternoonAction()) }}
                     </span>
                   </template>
                   <span>
@@ -169,13 +190,13 @@
                         afternoonAction(),
                         day(dayId)
                       )"
-                    >{{ error }}</div>
+                    >
+                      {{ error }}
+                    </div>
                   </span>
                 </v-tooltip>
                 <span v-else>
-                  {{
-                  getUsedCars(day(dayId), afternoonAction())
-                  }}
+                  {{ getUsedCars(day(dayId), afternoonAction()) }}
                 </span>
               </td>
             </tr>
@@ -189,7 +210,9 @@
                   'table-header': true,
                   'text-center': true
                 }"
-              >{{ getTotCars() }}</td>
+              >
+                {{ getTotCars() }}
+              </td>
             </tr>
           </tbody>
         </template>
@@ -207,13 +230,12 @@ import { ApplicationContext } from "../services/ApplicationContext";
 import { factory } from "../utils/ConfigLog4j";
 import { Action } from "../models/Action";
 import { stats, cacheable } from "@/utils/Decorators";
-import { CacheConfig } from "@/utils/Cache";
+import { CacheConfig, CacheConfigFactory } from "@/utils/Cache";
 
 @Component({ components: { WorkShiftInput, MonthPicker } })
 export default class WorkShiftTable extends Vue {
   private logger = factory.getLogger("components.WorkShiftTable");
   @Prop() private context!: WorkContext;
-  @Prop() private availableStates!: Array<string>;
 
   constructor() {
     super();
@@ -226,12 +248,7 @@ export default class WorkShiftTable extends Vue {
   handleUpdateFromDate(value: string): void {
     this.logger.info(() => `Update from date: ${value}`);
     const dateService = ApplicationContext.getInstance().getDateService();
-    const date = dateService.parse(value);
-
-    const startOfMonth = dateService.getStartOfMonth(date);
-    const endOfMonth = dateService.getEndOfMonth(date);
-    this.context.from = dateService.getStartOfWeek(startOfMonth);
-    this.context.to = dateService.getEndOfWeek(endOfMonth);
+    this.context.date = dateService.parse(value);
   }
   handleShift(employeeId: number, date: Date, value: string): void {
     this.logger.info(
@@ -241,72 +258,91 @@ export default class WorkShiftTable extends Vue {
     const key: string = this.context.workShift.key(employee, date);
     Vue.set(this.context.workShift.shift, key, value);
   }
-  @stats()
+  @stats("WorkShiftTable")
   getShift(employeeId: number, date: Date): string {
     const employee = this.context.getEmployee(employeeId);
     return this.context.workShift.getValue(employee, date);
   }
+  @stats("WorkShiftTable.cached")
   @cacheable(
     "WorkShiftTable.getEmployeeErrors",
-    (args: any[]) => args[0] + "_" + (args[1] as Date).toISOString()
+    (args: any[]) => args[0] + "_" + (args[1] as Date).toISOString(),
+    new CacheConfigFactory()
+      .ttl(500)
+      .maxSize(2000)
+      .build()
   )
-  @stats()
+  @stats("WorkShiftTable.raw")
   getEmployeeErrors(employeeId: number, day: Date): Array<string> {
     return ApplicationContext.getInstance()
       .getShiftValidationService()
       .getEmployeeErrors(employeeId, day, this.context);
   }
 
-  @stats()
+  @stats("WorkShiftTable")
   hasEmployeeErrors(employeeId: number, day: Date): boolean {
     return this.getEmployeeErrors(employeeId, day).length > 0;
   }
-  @stats()
+  @stats("WorkShiftTable")
   getCarsErrors(action: Action, day: Date): Array<string> {
     return ApplicationContext.getInstance()
       .getShiftValidationService()
       .getCarsErrors(day, action, this.context);
   }
-  @stats()
+  @stats("WorkShiftTable")
   hasCarsErrors(action: Action, day: Date): boolean {
     return this.getCarsErrors(action, day).length > 0;
   }
-  @stats()
+  @stats("WorkShiftTable")
   employees(): Array<number> {
     return this.context.sortedEmployees();
   }
-  @stats()
+  @stats("WorkShiftTable")
   formatHeaderDate(date: Date): string {
     return ApplicationContext.getInstance()
       .getDateService()
       .formatShort(date);
   }
-  @stats()
+  @stats("WorkShiftTable")
   getDayOfWeekLabel(date: Date): string {
     return ApplicationContext.getInstance()
       .getDateService()
       .getDayOfWeekLabel(date);
   }
-  @stats()
+  @stats("WorkShiftTable")
   days(): number {
     return ApplicationContext.getInstance()
       .getDateService()
-      .range(this.context.from, this.context.to).length;
+      .range(this.rangeStart(), this.rangeEnd()).length;
   }
 
   @cacheable(
     "WorkShiftTable.day",
     (args: any[]) => args[0],
-    CacheConfig.init(40, 10)
+    CacheConfig.init(40, 1000)
   )
-  @stats()
+  @stats("WorkShiftTable")
   day(index: number): Date {
     const d = ApplicationContext.getInstance()
       .getDateService()
-      .range(this.context.from, this.context.to)[index - 1];
+      .range(this.rangeStart(), this.rangeEnd())[index - 1];
     return d;
   }
-  @stats()
+  @cacheable("WorkShiftTable.rangeStart", (args: any[]) => "")
+  @stats("WorkShiftTable")
+  rangeStart(): Date {
+    const dateService = ApplicationContext.getInstance().getDateService();
+    const startOfMonth = dateService.getStartOfMonth(this.context.date);
+    return dateService.getStartOfWeek(startOfMonth);
+  }
+  @cacheable("WorkShiftTable.rangeEnd", (args: any[]) => "")
+  @stats("WorkShiftTable")
+  rangeEnd(): Date {
+    const dateService = ApplicationContext.getInstance().getDateService();
+    const endOfMonth = dateService.getEndOfMonth(this.context.date);
+    return dateService.getEndOfWeek(endOfMonth);
+  }
+  @stats("WorkShiftTable")
   isEndOfWeek(date: Date): boolean {
     return ApplicationContext.getInstance()
       .getDateService()
@@ -314,7 +350,7 @@ export default class WorkShiftTable extends Vue {
   }
 
   @cacheable("WorkShiftTable.isStartOfSubgroup", (args: any[]) => args[0])
-  @stats()
+  @stats("WorkShiftTable")
   isStartOfSubgroup(employeeId: number): boolean {
     if (this.isStartOfGroup(employeeId)) {
       return false;
@@ -333,7 +369,7 @@ export default class WorkShiftTable extends Vue {
     return false;
   }
   @cacheable("WorkShiftTable.isStartOfGroup", (args: any[]) => args[0])
-  @stats()
+  @stats("WorkShiftTable")
   isStartOfGroup(employeeId: number): boolean {
     const employees = this.employees();
     const index = employees.findIndex(id => id == employeeId);
@@ -362,7 +398,7 @@ export default class WorkShiftTable extends Vue {
     }
     return "";
   }
-  @stats()
+  @stats("WorkShiftTable")
   getUsedCars(date: Date, action: Action): number {
     const service = ApplicationContext.getInstance().getWorkShiftService();
     const a = service.countByEmployeesDatesAction(
@@ -387,6 +423,34 @@ export default class WorkShiftTable extends Vue {
   }
   afternoonAction(): Action {
     return Action.AFTERNOON;
+  }
+  randomize(): void {
+    const employeeIds = this.context.sortedEmployees();
+    const days = this.days();
+    const labels = ["M", "M*", "P", "mal"];
+    const random = (size: number) => Math.floor(Math.random() * size);
+    for (let i = 0; i < 500; i++) {
+      const employeeId = employeeIds[random(employeeIds.length)];
+      const day = this.day(random(days - 1) + 1);
+      const label = labels[random(labels.length)];
+      this.handleShift(employeeId, day, label);
+    }
+  }
+  clearData(): void {
+    const employeeIds = this.context.sortedEmployees();
+    const label = ApplicationContext.getInstance()
+      .getActionService()
+      .getDefaultLabel();
+    for (let day = 1; day < this.days(); day++) {
+      employeeIds.forEach(employeeId =>
+        this.handleShift(employeeId, this.day(day), label)
+      );
+    }
+  }
+  availableStates(): Array<string> {
+    return ApplicationContext.getInstance()
+      .getActionService()
+      .getAllLabels();
   }
 }
 </script>
