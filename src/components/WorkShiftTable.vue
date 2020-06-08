@@ -9,10 +9,10 @@
     </v-row>
     <v-row>
       <v-col>
-        <MonthPicker
-          :initialValue="context.from"
-          @update-date="handleUpdateFromDate"
-        />
+        <MonthPicker :initialValue="context.from" @update-date="handleUpdateFromDate" />
+      </v-col>
+      <v-col>
+        <v-btn v-on:click="exportWorkShift()" color="primary">Export</v-btn>
       </v-col>
       <v-col>
         <v-btn v-on:click="clearData()" color="error">Clear</v-btn>
@@ -38,9 +38,7 @@
                   'text-center': true,
                   'start-of-group': true
                 }"
-              >
-                {{ formatHeaderDate(day(dayId)) }}
-              </th>
+              >{{ formatHeaderDate(day(dayId)) }}</th>
             </tr>
             <tr>
               <th class="text-left"></th>
@@ -54,16 +52,12 @@
                   'table-header': true,
                   'text-center': true
                 }"
-              >
-                {{ getDayOfWeekLabel(day(dayId)) }}
-              </th>
+              >{{ getDayOfWeekLabel(day(dayId)) }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="employeeId in employees()" :key="employeeId">
-              <td>
-                {{ employeeId }} - {{ context.getEmployee(employeeId).name }}
-              </td>
+              <td>{{ employeeId }} - {{ context.getEmployee(employeeId).name }}</td>
               <td>{{ getGroupName(employeeId) }}</td>
               <td class="end-of-week">{{ getSubgroupName(employeeId) }}</td>
               <td
@@ -93,9 +87,7 @@
                     <div
                       :key="error"
                       v-for="error in getEmployeeErrors(employeeId, day(dayId))"
-                    >
-                      {{ error }}
-                    </div>
+                    >{{ error }}</div>
                   </span>
                 </v-tooltip>
                 <WorkShiftInput
@@ -121,14 +113,9 @@
                   errors: hasCarsErrors(morningAction(), day(dayId))
                 }"
               >
-                <v-tooltip
-                  top
-                  v-if="hasCarsErrors(morningAction(), day(dayId))"
-                >
+                <v-tooltip top v-if="hasCarsErrors(morningAction(), day(dayId))">
                   <template v-slot:activator="{ on: onTooltip }">
-                    <span v-on="onTooltip">
-                      {{ getUsedCars(day(dayId), morningAction()) }}
-                    </span>
+                    <span v-on="onTooltip">{{ getUsedCars(day(dayId), morningAction()) }}</span>
                   </template>
                   <span>
                     <div
@@ -137,14 +124,10 @@
                         morningAction(),
                         day(dayId)
                       )"
-                    >
-                      {{ error }}
-                    </div>
+                    >{{ error }}</div>
                   </span>
                 </v-tooltip>
-                <span v-else>
-                  {{ getUsedCars(day(dayId), morningAction()) }}
-                </span>
+                <span v-else>{{ getUsedCars(day(dayId), morningAction()) }}</span>
               </td>
             </tr>
             <tr>
@@ -157,9 +140,7 @@
                   'table-header': true,
                   'text-center': true
                 }"
-              >
-                {{ getTotCars() }}
-              </td>
+              >{{ getTotCars() }}</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="2">Pomeriggio</td>
@@ -174,14 +155,9 @@
                   errors: hasCarsErrors(afternoonAction(), day(dayId))
                 }"
               >
-                <v-tooltip
-                  top
-                  v-if="hasCarsErrors(afternoonAction(), day(dayId))"
-                >
+                <v-tooltip top v-if="hasCarsErrors(afternoonAction(), day(dayId))">
                   <template v-slot:activator="{ on: onTooltip }">
-                    <span v-on="onTooltip">
-                      {{ getUsedCars(day(dayId), afternoonAction()) }}
-                    </span>
+                    <span v-on="onTooltip">{{ getUsedCars(day(dayId), afternoonAction()) }}</span>
                   </template>
                   <span>
                     <div
@@ -190,14 +166,10 @@
                         afternoonAction(),
                         day(dayId)
                       )"
-                    >
-                      {{ error }}
-                    </div>
+                    >{{ error }}</div>
                   </span>
                 </v-tooltip>
-                <span v-else>
-                  {{ getUsedCars(day(dayId), afternoonAction()) }}
-                </span>
+                <span v-else>{{ getUsedCars(day(dayId), afternoonAction()) }}</span>
               </td>
             </tr>
             <tr>
@@ -210,9 +182,7 @@
                   'table-header': true,
                   'text-center': true
                 }"
-              >
-                {{ getTotCars() }}
-              </td>
+              >{{ getTotCars() }}</td>
             </tr>
           </tbody>
         </template>
@@ -225,12 +195,14 @@
 import { Component, Prop, Vue } from "vue-property-decorator";
 import WorkShiftInput from "./WorkShiftInput.vue";
 import MonthPicker from "./MonthPicker.vue";
-import { WorkContext } from "../models/WorkContext";
-import { ApplicationContext } from "../services/ApplicationContext";
-import { factory } from "../utils/ConfigLog4j";
-import { Action } from "../models/Action";
+import { WorkContext } from "@/models/WorkContext";
+import { ApplicationContext } from "@/services/ApplicationContext";
+import { factory } from "@/utils/ConfigLog4j";
+import { Action } from "@/models/Action";
 import { stats, cacheable } from "@/utils/Decorators";
 import { CacheConfig, CacheConfigFactory } from "@/utils/Cache";
+import { Shift } from "@/models/Shift";
+import { ArrayUtil } from "@/utils/ArrayUtil";
 
 @Component({ components: { WorkShiftInput, MonthPicker } })
 export default class WorkShiftTable extends Vue {
@@ -255,13 +227,22 @@ export default class WorkShiftTable extends Vue {
       () => `New shift, employee ${employeeId}, day ${date}, value=${value}`
     );
     const employee = this.context.getEmployee(employeeId);
-    const key: string = this.context.workShift.key(employee, date);
-    Vue.set(this.context.workShift.shift, key, value);
+
+    ArrayUtil.delete(
+      this.context.workShifts,
+      s =>
+        s.employeeId == employee.id &&
+        s.date.toISOString() == date.toISOString()
+    );
+    const shift = new Shift(employeeId, date, value);
+    this.context.workShifts.push(shift);
+    //Vue.set(this.context.workShifts, key, value);
   }
   @stats("WorkShiftTable")
   getShift(employeeId: number, date: Date): string {
     const employee = this.context.getEmployee(employeeId);
-    return this.context.workShift.getValue(employee, date);
+    const workshiftService = ApplicationContext.getInstance().getWorkShiftService();
+    return workshiftService.getValue(this.context.workShifts, employee, date);
   }
   @stats("WorkShiftTable.cached")
   @cacheable(
@@ -305,9 +286,8 @@ export default class WorkShiftTable extends Vue {
   }
   @stats("WorkShiftTable")
   getDayOfWeekLabel(date: Date): string {
-    return ApplicationContext.getInstance()
-      .getDateService()
-      .getDayOfWeekLabel(date);
+    const dateService = ApplicationContext.getInstance().getDateService();
+    return dateService.getDayOfWeekLabel(dateService.getDayOfWeek(date));
   }
   @stats("WorkShiftTable")
   days(): number {
@@ -331,16 +311,16 @@ export default class WorkShiftTable extends Vue {
   @cacheable("WorkShiftTable.rangeStart", (args: any[]) => "")
   @stats("WorkShiftTable")
   rangeStart(): Date {
-    const dateService = ApplicationContext.getInstance().getDateService();
-    const startOfMonth = dateService.getStartOfMonth(this.context.date);
-    return dateService.getStartOfWeek(startOfMonth);
+    return ApplicationContext.getInstance()
+      .getWorkShiftService()
+      .rangeStart(this.context);
   }
   @cacheable("WorkShiftTable.rangeEnd", (args: any[]) => "")
   @stats("WorkShiftTable")
   rangeEnd(): Date {
-    const dateService = ApplicationContext.getInstance().getDateService();
-    const endOfMonth = dateService.getEndOfMonth(this.context.date);
-    return dateService.getEndOfWeek(endOfMonth);
+    return ApplicationContext.getInstance()
+      .getWorkShiftService()
+      .rangeEnd(this.context);
   }
   @stats("WorkShiftTable")
   isEndOfWeek(date: Date): boolean {
@@ -446,6 +426,11 @@ export default class WorkShiftTable extends Vue {
         this.handleShift(employeeId, this.day(day), label)
       );
     }
+  }
+  exportWorkShift(): void {
+    ApplicationContext.getInstance()
+      .getWorkShiftService()
+      .export(this.context);
   }
   availableStates(): Array<string> {
     return ApplicationContext.getInstance()

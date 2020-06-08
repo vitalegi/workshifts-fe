@@ -2,6 +2,7 @@ import { ActionService } from "@/services/ActionService";
 import { DateService } from "@/services/DateService";
 import { WorkShiftService } from "@/services/WorkShiftService";
 import { ShiftValidationService } from "@/services/ShiftValidationService";
+import { WeekConstraintService } from "@/services/WeekConstraintService";
 
 export class ApplicationContext {
   private _instances: any;
@@ -35,6 +36,13 @@ export class ApplicationContext {
     return this.getService(
       "ShiftValidationService",
       () => new ShiftValidationService()
+    );
+  }
+
+  public getWeekConstraintService(): WeekConstraintService {
+    return this.getService(
+      "WeekConstraintService",
+      () => new WeekConstraintService()
     );
   }
 

@@ -54,8 +54,9 @@ export class DateService {
         throw new Error("Unrecognized date " + date);
     }
   }
-  public getDayOfWeekLabel(date: Date): string {
-    switch (this.getDayOfWeek(date)) {
+
+  public getDayOfWeekLabel(dayOfWeek: DayOfWeek): string {
+    switch (dayOfWeek) {
       case DayOfWeek.MONDAY:
         return "L";
       case DayOfWeek.TUESDAY:
@@ -71,6 +72,47 @@ export class DateService {
       case DayOfWeek.SUNDAY:
         return "D";
     }
+  }
+  public getDayOfWeekName(dayOfWeek: DayOfWeek): string {
+    switch (dayOfWeek) {
+      case DayOfWeek.MONDAY:
+        return "MONDAY";
+      case DayOfWeek.TUESDAY:
+        return "TUESDAY";
+      case DayOfWeek.WEDNESDAY:
+        return "WEDNESDAY";
+      case DayOfWeek.THURSDAY:
+        return "THURSDAY";
+      case DayOfWeek.FRIDAY:
+        return "FRIDAY";
+      case DayOfWeek.SATURDAY:
+        return "SATURDAY";
+      case DayOfWeek.SUNDAY:
+        return "SUNDAY";
+    }
+  }
+
+  public getDayOfWeekFromName(dayOfWeekName: string): DayOfWeek {
+    const days = this.getDaysOfWeek().filter((dayEnum) => {
+      const name = this.getDayOfWeekName(dayEnum);
+      return name == dayOfWeekName;
+    });
+    if (days.length == 1) {
+      return days[0];
+    }
+    throw new Error(`Cannot convert [${dayOfWeekName}] to a DayOfWeek obj`);
+  }
+
+  public getDaysOfWeek(): DayOfWeek[] {
+    return [
+      DayOfWeek.MONDAY,
+      DayOfWeek.TUESDAY,
+      DayOfWeek.WEDNESDAY,
+      DayOfWeek.THURSDAY,
+      DayOfWeek.FRIDAY,
+      DayOfWeek.SATURDAY,
+      DayOfWeek.SUNDAY,
+    ];
   }
 
   /**

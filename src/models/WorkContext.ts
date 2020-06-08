@@ -1,8 +1,8 @@
 import { Employee } from "./Employee";
 import { AvailableCars } from "./AvailableCars";
-import { WorkShift } from "./WorkShift";
 import { Subgroup } from "./Subgroup";
 import { Group } from "./Group";
+import { Shift } from "./Shift";
 
 export class WorkContext {
   private _date: Date;
@@ -10,7 +10,7 @@ export class WorkContext {
   private _groups: Map<number, Group>;
   private _subgroups: Map<number, Subgroup>;
   private _availableCars: AvailableCars;
-  private _workShift: WorkShift;
+  private _workShifts: Array<Shift>;
 
   public constructor() {
     this._date = new Date();
@@ -18,7 +18,7 @@ export class WorkContext {
     this._groups = new Map();
     this._subgroups = new Map();
     this._availableCars = new AvailableCars();
-    this._workShift = new WorkShift();
+    this._workShifts = new Array<Shift>();
   }
 
   public getEmployee(id: number): Employee {
@@ -94,11 +94,11 @@ export class WorkContext {
   public get availableCars() {
     return this._availableCars;
   }
-  public set workShift(workShift: WorkShift) {
-    this._workShift = workShift;
+  public set workShifts(workShifts: Array<Shift>) {
+    this._workShifts = workShifts;
   }
-  public get workShift() {
-    return this._workShift;
+  public get workShifts() {
+    return this._workShifts;
   }
   public set groups(groups: Map<number, Group>) {
     this._groups = groups;

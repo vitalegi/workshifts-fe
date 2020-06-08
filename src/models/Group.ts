@@ -3,13 +3,17 @@ import { WeekConstraint } from "@/models/WeekConstraint";
 export class Group {
   private _id = 0;
   private _name = "";
-  private _constraints = new WeekConstraint();
+  private _constraints = new Array<WeekConstraint>();
 
   public clone(): Group {
-    const group = new Group();
-    group.id = this.id;
-    group.name = this.name;
-    return group;
+    return this.doClone(new Group());
+  }
+
+  protected doClone(clone:Group) {
+    clone.id = this.id;
+    clone.name = this.name;
+    clone.constraints = this.constraints.map(c => c.clone());
+    return clone;
   }
 
   public set name(name: string) {
@@ -27,7 +31,7 @@ export class Group {
     return this._id;
   }
 
-  public set constraints(constraints: WeekConstraint) {
+  public set constraints(constraints: Array<WeekConstraint>) {
     this._constraints = constraints;
   }
   public get constraints() {

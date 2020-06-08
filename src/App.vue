@@ -43,9 +43,9 @@ import { ApplicationContext } from "@/services/ApplicationContext";
 import { Employee } from "@/models/Employee";
 import { Group } from "@/models/Group";
 import { Subgroup } from "@/models/Subgroup";
-import { WeekConstraintBuilder } from "@/models/WeekConstraint";
 import { DayOfWeek } from "@/utils/DayOfWeek";
 import { Action } from "@/models/Action";
+import { WeekConstraint } from "@/models/WeekConstraint";
 
 @Component({
   components: {
@@ -143,12 +143,12 @@ export default class App extends Vue {
     context: WorkContext,
     id: number,
     name: string,
-    constraints: WeekConstraintBuilder
+    constraints: WeekConstraint[]
   ): Group {
     const group = new Group();
     group.id = id;
     group.name = name;
-    group.constraints = constraints.build();
+    group.constraints = constraints.map(c => c.clone());
     context.groups.set(id, group);
     return group;
   }
@@ -158,13 +158,13 @@ export default class App extends Vue {
     id: number,
     name: string,
     parentId: number,
-    constraints: WeekConstraintBuilder
+    constraints: WeekConstraint[]
   ): Group {
     const subgroup = new Subgroup();
     subgroup.id = id;
     subgroup.name = name;
     subgroup.parent = parentId;
-    subgroup.constraints = constraints.build();
+    subgroup.constraints = constraints.map(c => c.clone());
     context.subgroups.set(id, subgroup);
     return subgroup;
   }
@@ -174,8 +174,9 @@ export default class App extends Vue {
     minAfternoonsWeekdays: number,
     minMorningsWeekends: number,
     minAfternoonsWeekends: number
-  ): WeekConstraintBuilder {
-    const builder = WeekConstraintBuilder.newInstance();
+  ): WeekConstraint[] {
+    const list = new Array<WeekConstraint>();
+
     const weekdays = [
       DayOfWeek.MONDAY,
       DayOfWeek.TUESDAY,
@@ -185,14 +186,16 @@ export default class App extends Vue {
     ];
     const weekends = [DayOfWeek.SATURDAY, DayOfWeek.SUNDAY];
     weekdays.forEach(day => {
-      builder.setMin(day, Action.MORNING, minMorningsWeekdays);
-      builder.setMin(day, Action.AFTERNOON, minAfternoonsWeekdays);
+      list.push(WeekConstraint.min(day, Action.MORNING, minMorningsWeekdays));
+      list.push(WeekConstraint.min(day, Action.AFTERNOON, minMorningsWeekdays));
     });
     weekends.forEach(day => {
-      builder.setMin(day, Action.MORNING, minMorningsWeekends);
-      builder.setMin(day, Action.AFTERNOON, minAfternoonsWeekends);
+      list.push(WeekConstraint.min(day, Action.MORNING, minMorningsWeekends));
+      list.push(
+        WeekConstraint.min(day, Action.AFTERNOON, minAfternoonsWeekends)
+      );
     });
-    return builder;
+    return list;
   }
 }
 </script>

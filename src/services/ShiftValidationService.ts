@@ -192,27 +192,32 @@ abstract class AbstractMinShiftsPerGroup extends AbstractShiftValidator {
       )
       .map((employee) => employee.id);
 
-    const expectedMinMornings = targetGroup.constraints.getMin(
-      dayOfWeek,
-      Action.MORNING
-    );
+    const expectedMinMornings =
+      ApplicationContext.getInstance()
+        .getWeekConstraintService()
+        .getMinValue(targetGroup.constraints, dayOfWeek, Action.MORNING) || 0;
     const actualMornings = this.workShiftService.countByEmployeesDatesAction(
       employeeIdsInTargetGroup,
       [day],
       Action.MORNING,
       context
     );
-    const expectedMinAfternoons = targetGroup.constraints.getMin(
-      dayOfWeek,
-      Action.AFTERNOON
-    );
+    const expectedMinAfternoons =
+      ApplicationContext.getInstance()
+        .getWeekConstraintService()
+        .getMinValue(targetGroup.constraints, dayOfWeek, Action.AFTERNOON) || 0;
+
     const actualAfternoons = this.workShiftService.countByEmployeesDatesAction(
       employeeIdsInTargetGroup,
       [day],
       Action.AFTERNOON,
       context
     );
-    const action = context.workShift.getAction(employee, day);
+    const action = this.workShiftService.getAction(
+      context.workShifts,
+      employee,
+      day
+    );
     if (expectedMinMornings > actualMornings) {
       errors.push(
         `Nel gruppo ${targetGroup.name} al mattino sono richieste almeno ${expectedMinMornings} risorse, presenti ${actualMornings}`
@@ -233,7 +238,6 @@ abstract class AbstractMinShiftsPerGroup extends AbstractShiftValidator {
 }
 
 class MinShiftsPerGroup extends AbstractMinShiftsPerGroup {
-
   @stats("ShiftValidationService.MinShiftsPerGroup")
   public errors(
     employeeId: number | null,
@@ -250,7 +254,6 @@ class MinShiftsPerGroup extends AbstractMinShiftsPerGroup {
   }
 }
 class MinShiftsPerSubGroup extends AbstractMinShiftsPerGroup {
-  
   @stats("ShiftValidationService.MinShiftsPerSubGroup")
   public errors(
     employeeId: number | null,

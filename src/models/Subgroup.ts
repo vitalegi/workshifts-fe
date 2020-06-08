@@ -7,6 +7,12 @@ export class Subgroup extends Group {
     super();
   }
 
+  public clone(): Subgroup {
+    const clone = super.doClone(new Subgroup()) as Subgroup;
+    clone.parent = this.parent;
+    return clone;
+  }
+
   public set parent(parent: number) {
     this._parent = parent;
   }

@@ -1,57 +1,65 @@
 import { DayOfWeek } from "@/utils/DayOfWeek";
 import { Action } from "@/models/Action";
 
+export const TYPE_MIN = "min";
+
 export class WeekConstraint {
-  private _constraints: Map<string, number> = new Map();
+  private _dayOfWeek: DayOfWeek = DayOfWeek.MONDAY;
+  private _action: Action = Action.IDLE;
+  private _type = "";
+  private _value = 0;
 
-  public clone(): WeekConstraint {
-    const clone = new WeekConstraint();
-    Array.from(this._constraints.entries()).forEach((entry) => {
-      clone._constraints.set(entry[0], entry[1]);
-    });
-    return clone;
-  }
-  public setMin(dayOfWeek: DayOfWeek, action: Action, value: number): void {
-    this._constraints.set(this.key(dayOfWeek, action, "min"), value);
-  }
-
-  public getMin(dayOfWeek: DayOfWeek, action: Action): number {
-    const value = this._constraints.get(this.key(dayOfWeek, action, "min"));
-    if (typeof value === "undefined") {
-      return 0;
-    }
-    return value;
+  public constructor(
+    dayOfWeek: DayOfWeek,
+    action: Action,
+    value: number,
+    type: string
+  ) {
+    this.dayOfWeek = dayOfWeek;
+    this.action = action;
+    this.value = value;
+    this.type = type;
   }
 
-  private key(dayOfWeek: DayOfWeek, action: Action, type: string) {
-    return `${dayOfWeek}_${action}_${type}`;
-  }
-
-  public toString(): string {
-    let output = "";
-    for (const entry of this._constraints.entries()) {
-      output += entry[0] + "=" + entry[1] + ", ";
-    }
-    return output;
-  }
-}
-
-export class WeekConstraintBuilder {
-  private _instance = new WeekConstraint();
-
-  public static newInstance(): WeekConstraintBuilder {
-    return new WeekConstraintBuilder();
-  }
-
-  public setMin(
+  public static min(
     dayOfWeek: DayOfWeek,
     action: Action,
     value: number
-  ): WeekConstraintBuilder {
-    this._instance.setMin(dayOfWeek, action, value);
-    return this;
+  ): WeekConstraint {
+    return new WeekConstraint(dayOfWeek, action, value, TYPE_MIN);
   }
-  public build(): WeekConstraint {
-    return this._instance.clone();
+
+  public get dayOfWeek() {
+    return this._dayOfWeek;
+  }
+  public set dayOfWeek(dayOfWeek: DayOfWeek) {
+    this._dayOfWeek = dayOfWeek;
+  }
+  public get action() {
+    return this._action;
+  }
+  public set action(action: Action) {
+    this._action = action;
+  }
+  public get type() {
+    return this._type;
+  }
+  public set type(type: string) {
+    this._type = type;
+  }
+  public get value() {
+    return this._value;
+  }
+  public set value(value: number) {
+    this._value = value;
+  }
+
+  public clone(): WeekConstraint {
+    return new WeekConstraint(
+      this.dayOfWeek,
+      this.action,
+      this.value,
+      this.type
+    );
   }
 }
