@@ -78,14 +78,6 @@ export class WorkShiftService {
   }
 
   public export(context: WorkContext) {
-    /*  fetch("https://jsonplaceholder.typicode.com/todos", {
-      headers: { "Content-Type": "application/json; charset=utf-8" },
-      method: "POST",
-      body: JSON.stringify(context),
-    })
-      .then((response) => response.json())
-      .then((data) => console.log(JSON.stringify(data)));
-*/
     fetch("https://jsonplaceholder.typicode.com/todos", {
       headers: { "Content-Type": "application/json; charset=utf-8" },
       method: "POST",

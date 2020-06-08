@@ -4,26 +4,31 @@ import { Group } from "@/models/Group";
 import { WeekConstraint } from "@/models/WeekConstraint";
 import { Subgroup } from "@/models/Subgroup";
 import { ApplicationContext } from "@/services/ApplicationContext";
-import { DayOfWeek } from "@/utils/DayOfWeek";
-import { Action } from "@/models/Action";
-import { WorkContextIO } from "@/transformer/WorkContextIO";
+import { Shift } from "@/models/Shift";
 
 export class ContextDeserializer {
   private dateService = ApplicationContext.getInstance().getDateService();
   private actionService = ApplicationContext.getInstance().getActionService();
 
-  public deserializeContext(obj: WorkContextIO): WorkContext {
+  public deserializeContext(obj: object): WorkContext {
     const context = new WorkContext();
-    context.date = this.dateService.parse(obj.date);
-    obj.employees.forEach((e) => context.employees.set(e.id, e));
-    obj.groups.forEach((g) => context.groups.set(g.id, g));
-    obj.subgroups.forEach((g) => context.subgroups.set(g.id, g));
-    obj.shifts.forEach((s) => context.workShifts.push(s));
-    context.availableCars.total = obj.availableCars;
+    context.date = this.dateValue(obj, "date");
+    this.values(obj, "employees")
+      .map((o) => this.deserializeEmployee(o))
+      .forEach((o) => context.employees.set(o.id, o));
+    this.values(obj, "groups")
+      .map((o) => this.deserializeGroup(o))
+      .forEach((o) => context.groups.set(o.id, o));
+    this.values(obj, "subgroups")
+      .map((o) => this.deserializeSubgroup(o))
+      .forEach((o) => context.subgroups.set(o.id, o));
+    context.workShifts = this.values(obj, "shifts").map((o) =>
+      this.deserializeShift(o)
+    );
+    context.availableCars.total = this.numberValue(obj, "availableCars");
     return context;
   }
-
-  public deserializeEmployee(obj: any): Employee {
+  protected deserializeEmployee(obj: any): Employee {
     const e = new Employee();
     e.id = this.numberValue(obj, "id");
     e.name = this.stringValue(obj, "name");
@@ -33,8 +38,7 @@ export class ContextDeserializer {
     e.maxWeekAfternoons = this.numberValue(obj, "maxWeekAfternoons");
     return e;
   }
-
-  public deserializeGroup(obj: any): Group {
+  protected deserializeGroup(obj: any): Group {
     const g = new Group();
     g.id = this.numberValue(obj, "id");
     g.name = this.stringValue(obj, "name");
@@ -43,8 +47,7 @@ export class ContextDeserializer {
       .forEach((constraint) => g.constraints.push(constraint));
     return g;
   }
-
-  public deserializeSubgroup(obj: any): Subgroup {
+  protected deserializeSubgroup(obj: any): Subgroup {
     const g = new Subgroup();
     g.id = this.numberValue(obj, "id");
     g.name = this.stringValue(obj, "name");
@@ -54,8 +57,7 @@ export class ContextDeserializer {
       .forEach((constraint) => g.constraints.push(constraint));
     return g;
   }
-
-  public deserializeWeekConstraint(obj: object): WeekConstraint {
+  protected deserializeWeekConstraint(obj: object): WeekConstraint {
     const dayOfWeek = this.dateService.getDayOfWeekFromName(
       this.stringValue(obj, "dayOfWeek")
     );
@@ -65,15 +67,18 @@ export class ContextDeserializer {
     const value = this.numberValue(obj, "value");
     return WeekConstraint.min(dayOfWeek, action, value);
   }
-
+  protected deserializeShift(obj: object): Shift {
+    const employeeId = this.numberValue(obj, "employeeId");
+    const date = this.dateValue(obj, "date");
+    const value = this.stringValue(obj, "value");
+    return new Shift(employeeId, date, value);
+  }
   private dateValue(obj: any, key: string): Date {
     const value = this.stringValue(obj, key);
-    console.log(value);
     return this.dateService.parse(value);
   }
   private numberValue(obj: any, key: string): number {
     const value = this.value(obj, key);
-    console.log(value);
     return value as number;
   }
   private stringValue(obj: any, key: string): string {
@@ -81,23 +86,16 @@ export class ContextDeserializer {
     return value as string;
   }
   private values(obj: any, key: string): Array<object> {
-    const values = this.value(obj, key) as Array<Array<object>>;
-    if (!Array.isArray(values)) {
-      throw new Error(
-        `Property ${key} on object is not an array. Object: ${obj}`
-      );
-    }
-    return values[0];
+    return this.value(obj, key) as Array<object>;
   }
   private value(obj: any, key: string): unknown {
-    return Object.entries(obj)
-      .filter((entry) => entry[0] == key)
-      .map((entry) => entry[1])
-      .map((v) => {
-        console.log("raw value");
-        console.log(v);
-        return v;
-      })
-      .map((value) => value as unknown);
+    const keys = Object.keys(obj);
+    let targetIndex = -1;
+    for (let i = 0; i < keys.length; i++) {
+      if (keys[i] == key) {
+        targetIndex = i;
+      }
+    }
+    return Object.values(obj)[targetIndex];
   }
 }
