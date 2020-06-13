@@ -3,6 +3,8 @@ import { AvailableCars } from "./AvailableCars";
 import { Subgroup } from "./Subgroup";
 import { Group } from "./Group";
 import { Shift } from "./Shift";
+import { ArrayUtil } from "@/utils/ArrayUtil";
+import { ApplicationContext } from '@/services/ApplicationContext';
 
 export class WorkContext {
   private _date: Date;
@@ -10,7 +12,9 @@ export class WorkContext {
   private _groups: Map<number, Group>;
   private _subgroups: Map<number, Subgroup>;
   private _availableCars: AvailableCars;
+
   private _workShifts: Array<Shift>;
+  public _workShiftsMap = new Map<number, Map<string, string>>();
 
   public constructor() {
     this._date = new Date();
@@ -58,7 +62,7 @@ export class WorkContext {
       }
       return employee1.id - employee2.id;
     });
-    return employees.map(e => e.id);
+    return employees.map((e) => e.id);
   }
   public getSubgroupByEmployee(employeeId: number): Subgroup | undefined {
     const subgroupId = this.getEmployee(employeeId).subgroupId;
@@ -79,6 +83,37 @@ export class WorkContext {
   }
   public getGroupById(groupId: number): Group | undefined {
     return this.groups.get(groupId);
+  }
+
+  public setShift(employeeId: number, date: Date, value: string): void {
+    const dateService = ApplicationContext.getInstance().getDateService();
+    ArrayUtil.delete(
+      this.workShifts,
+      (s) =>
+        s.employeeId == employeeId && dateService.format(s.date) == dateService.format(date)
+    );
+    this.workShifts.push(new Shift(employeeId, date, value));
+
+    const map = this._workShiftsMap;
+    if (!map.has(employeeId)) {
+      map.set(employeeId, new Map<string, string>());
+    }
+    const dateMap = map.get(employeeId) as Map<string, string>;
+    if (!dateMap.has(dateService.format(date))) {
+      dateMap.set(dateService.format(date), value);
+    }
+  }
+
+  public getShift(employeeId: number, date: Date, defaultValue: string): string {
+    // make vue aware of the update
+    this.workShifts.length;
+
+    const dateService = ApplicationContext.getInstance().getDateService();
+    const value = this._workShiftsMap.get(employeeId)?.get(dateService.format(date));
+    if (value) {
+      return value;
+    }
+    return defaultValue;
   }
 
   public set date(date: Date) {

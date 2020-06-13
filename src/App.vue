@@ -23,7 +23,11 @@
 
       <v-spacer></v-spacer>
 
-      <v-btn href="https://github.com/vuetifyjs/vuetify/releases/latest" target="_blank" text>
+      <v-btn
+        href="https://github.com/vuetifyjs/vuetify/releases/latest"
+        target="_blank"
+        text
+      >
         <span class="mr-2">Latest Release</span>
         <v-icon>mdi-open-in-new</v-icon>
       </v-btn>
@@ -31,8 +35,12 @@
 
     <v-content>
       <v-row justify="space-between">
-        <MonthPicker :initialValue="context.from" @update-date="handleUpdateFromDate" />
+        <MonthPicker
+          :initialValue="context.from"
+          @update-date="handleUpdateFromDate"
+        />
         <WorkShiftActions
+          @update-validation="handleValidation"
           @export-json="handleExportJson"
           @import-json="handleImportJson"
           @export-excel="handleExportExcel"
@@ -43,9 +51,10 @@
       <v-row>
         <WorkShiftTable
           :context="context"
+          :inlineValidation="inlineValidation"
           @update-shift="
-          (employeeId, day, value) => handleShift(employeeId, day, value)
-        "
+            (employeeId, day, value) => handleShift(employeeId, day, value)
+          "
         />
       </v-row>
     </v-content>
@@ -82,6 +91,7 @@ import { saveAs } from "file-saver";
 export default class App extends Vue {
   private logger = factory.getLogger("App");
   private context: WorkContext;
+  private inlineValidation = true;
 
   constructor() {
     super();
@@ -169,7 +179,10 @@ export default class App extends Vue {
       });
     });
   }
-
+  handleValidation(validate: boolean) {
+    this.logger.info(() => `Validation ${validate}`);
+    this.inlineValidation = validate;
+  }
   handleExportJson() {
     this.logger.info(() => `Json export`);
     const obj = new ContextSerializer().serializeContext(
@@ -251,16 +264,7 @@ export default class App extends Vue {
     this.logger.info(
       () => `New shift, employee ${employeeId}, day ${date}, value=${value}`
     );
-    const employee = this.context.getEmployee(employeeId);
-
-    ArrayUtil.delete(
-      this.context.workShifts,
-      s =>
-        s.employeeId == employee.id &&
-        s.date.toISOString() == date.toISOString()
-    );
-    const shift = new Shift(employeeId, date, value);
-    this.context.workShifts.push(shift);
+    this.context.setShift(employeeId, date, value);
   }
   private static employee(
     context: WorkContext,

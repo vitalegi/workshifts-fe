@@ -11,10 +11,14 @@ import { Employee } from "@/models/Employee";
 export class WorkShiftService {
   private logger = factory.getLogger("services.WorkShiftService");
 
+  private actionService = ApplicationContext.getInstance().getActionService();
+  private dateService = ApplicationContext.getInstance().getDateService();
+
   @stats("WorkShiftService.cached")
   @cacheable(
     "WorkShiftService.countByEmployeesDatesAction",
-    (args: any[]) => args[0] + "_" + args[1] + "_" + args[2],
+    (args: any[]) =>
+      args[0] + "_" + args[1].map((d: any) => d.toISOString()) + "_" + args[2],
     new CacheConfigFactory().maxSize(2000).build()
   )
   @stats("WorkShiftService.raw")
@@ -24,33 +28,11 @@ export class WorkShiftService {
     action: Action,
     context: WorkContext
   ): number {
-    return employees.flatMap((employee) => {
-      const e = context.getEmployee(employee);
+    return employees.flatMap((employeeId) => {
       return dates
-        .map((date) => this.getAction(context.workShifts, e, date))
+        .map((date) => this.getAction(context, employeeId, date))
         .filter((a) => a == action);
     }).length;
-  }
-
-  public getValue(
-    shifts: Array<Shift>,
-    employee: Employee,
-    date: Date
-  ): string {
-    const filtered = shifts
-      .filter((s) => s.employeeId == employee.id)
-      .filter((s) => s.date.toISOString() == date.toISOString());
-    if (filtered.length == 0) {
-      return ApplicationContext.getInstance()
-        .getActionService()
-        .getDefaultLabel();
-    }
-    if (filtered.length > 1) {
-      throw new Error(
-        `Present more than 1 value for ${employee.id}-${date}: ${filtered}`
-      );
-    }
-    return filtered[0].value;
   }
 
   public hasEntry(
@@ -66,25 +48,25 @@ export class WorkShiftService {
   }
 
   public getAction(
-    shifts: Array<Shift>,
-    employee: Employee,
+    context: WorkContext,
+    employeeId: number,
     date: Date
   ): Action {
-    const label = this.getValue(shifts, employee, date);
-    return ApplicationContext.getInstance()
-      .getActionService()
-      .getAction(label);
+    const label = context.getShift(
+      employeeId,
+      date,
+      this.actionService.getDefaultLabel()
+    );
+    return this.actionService.getAction(label);
   }
 
   rangeStart(date: Date): Date {
-    const dateService = ApplicationContext.getInstance().getDateService();
-    const startOfMonth = dateService.getStartOfMonth(date);
-    return dateService.getStartOfWeek(startOfMonth);
+    const startOfMonth = this.dateService.getStartOfMonth(date);
+    return this.dateService.getStartOfWeek(startOfMonth);
   }
 
   rangeEnd(date: Date): Date {
-    const dateService = ApplicationContext.getInstance().getDateService();
-    const endOfMonth = dateService.getEndOfMonth(date);
-    return dateService.getEndOfWeek(endOfMonth);
+    const endOfMonth = this.dateService.getEndOfMonth(date);
+    return this.dateService.getEndOfWeek(endOfMonth);
   }
 }

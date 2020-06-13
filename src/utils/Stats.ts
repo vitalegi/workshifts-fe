@@ -83,7 +83,7 @@ setInterval(() => {
   }
   const logger = factory.getLogger("utils.Stats.stats");
 
-  logger.info(() => `Count\t|\tLong\t|\tAvg\t|\tWeight\t|\tName`);
+  logger.info(() => `Count\t|\tLong (>= ${longCallThreshold}ms)\t|\tAvg (ms)\t|\tWeight\t|\tName`);
   Array.from(StatsCollector.getInstance().entries.entries())
     .sort((a, b) => a[1].weight() - b[1].weight())
     .reverse()

@@ -1,6 +1,11 @@
 <template>
   <v-col md="8">
     <v-row justify="end">
+      <v-switch
+        v-model="validate"
+        label="Validazione attiva"
+        @change="handleValidation"
+      ></v-switch>
       <v-btn class="ma-2" color="primary" dark @click="handleExportJson"
         >Export
         <v-icon dark right>mdi-download</v-icon>
@@ -44,7 +49,12 @@ import { factory } from "@/utils/ConfigLog4j";
 @Component({})
 export default class WorkShiftActions extends Vue {
   private logger = factory.getLogger("WorkShiftActions");
+  private validate = true;
 
+  handleValidation() {
+    this.logger.info(() => `validation: ${this.validate}`)
+    this.$emit("update-validation", this.validate);
+  }
   handleExportJson() {
     this.$emit("export-json");
   }

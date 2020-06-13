@@ -278,7 +278,7 @@ export class ShiftValidationService {
     day: Date,
     context: WorkContext
   ): Array<string> {
-    return this.errors(employeeId, day, context, [
+    return this.employeeErrors(employeeId, day, context, [
       new TotalShiftsPerWeek(),
       new MaxShiftByTypePerWeek(),
       new MaxCarsPerShift(Action.MORNING),
@@ -291,7 +291,7 @@ export class ShiftValidationService {
     day: Date,
     context: WorkContext
   ): Array<string> {
-    return this.errors(groupId, day, context, [
+    return this.groupErrors(groupId, day, context, [
       new MinShiftsPerGroup()
     ]);
   }
@@ -301,7 +301,7 @@ export class ShiftValidationService {
     day: Date,
     context: WorkContext
   ): Array<string> {
-    return this.errors(groupId, day, context, [
+    return this.groupErrors(groupId, day, context, [
       new MinShiftsPerSubGroup()
     ]);
   }
@@ -311,14 +311,14 @@ export class ShiftValidationService {
     action: Action,
     context: WorkContext
   ): Array<string> {
-    return this.errors(null, day, context, [new MaxCarsPerShift(action)]);
+    return this.employeeErrors(null, day, context, [new MaxCarsPerShift(action)]);
   }
 
-  protected errors(
+  protected employeeErrors(
     employeeId: number | null,
     day: Date,
     context: WorkContext,
-    validators: Array<AbstractShiftValidator>
+    validators: Array<AbstractEmployeeShiftValidator>
   ): Array<string> {
     const errors = validators.flatMap((validator) =>
       validator.errors(employeeId, day, context)
@@ -326,6 +326,24 @@ export class ShiftValidationService {
     this.logger.debug(
       () =>
         `Validate employee ${employeeId} day ${this.dateService.format(
+          day
+        )} errors ${errors}`
+    );
+    return errors;
+  }
+  
+  protected groupErrors(
+    groupId: number | null,
+    day: Date,
+    context: WorkContext,
+    validators: Array<AbstractMinShiftsPerGroup>
+  ): Array<string> {
+    const errors = validators.flatMap((validator) =>
+      validator.errors(groupId, day, context)
+    );
+    this.logger.debug(
+      () =>
+        `Validate employee ${groupId} day ${this.dateService.format(
           day
         )} errors ${errors}`
     );

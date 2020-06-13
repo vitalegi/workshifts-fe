@@ -196,9 +196,9 @@
                   v-if="hasCarsErrors(morningAction(), day(dayId))"
                 >
                   <template v-slot:activator="{ on: onTooltip }">
-                    <span v-on="onTooltip">{{
-                      getUsedCars(day(dayId), morningAction())
-                    }}</span>
+                    <span v-on="onTooltip">
+                      {{ getUsedCars(day(dayId), morningAction()) }}
+                    </span>
                   </template>
                   <span>
                     <div
@@ -212,9 +212,9 @@
                     </div>
                   </span>
                 </v-tooltip>
-                <span v-else>{{
-                  getUsedCars(day(dayId), morningAction())
-                }}</span>
+                <span v-else>
+                  {{ getUsedCars(day(dayId), morningAction()) }}
+                </span>
               </td>
             </tr>
             <tr>
@@ -249,9 +249,9 @@
                   v-if="hasCarsErrors(afternoonAction(), day(dayId))"
                 >
                   <template v-slot:activator="{ on: onTooltip }">
-                    <span v-on="onTooltip">{{
-                      getUsedCars(day(dayId), afternoonAction())
-                    }}</span>
+                    <span v-on="onTooltip">
+                      {{ getUsedCars(day(dayId), afternoonAction()) }}
+                    </span>
                   </template>
                   <span>
                     <div
@@ -265,9 +265,9 @@
                     </div>
                   </span>
                 </v-tooltip>
-                <span v-else>{{
-                  getUsedCars(day(dayId), afternoonAction())
-                }}</span>
+                <span v-else>
+                  {{ getUsedCars(day(dayId), afternoonAction()) }}
+                </span>
               </td>
             </tr>
             <tr>
@@ -332,6 +332,8 @@ class TableElement {
 export default class WorkShiftTable extends Vue {
   private logger = factory.getLogger("components.WorkShiftTable");
   @Prop() private context!: WorkContext;
+  @Prop() private inlineValidation!: boolean;
+  private actionService = ApplicationContext.getInstance().getActionService();
 
   constructor() {
     super();
@@ -349,14 +351,18 @@ export default class WorkShiftTable extends Vue {
   }
   @stats("WorkShiftTable")
   getShift(employeeId: number, date: Date): string {
-    const employee = this.context.getEmployee(employeeId);
-    const workshiftService = ApplicationContext.getInstance().getWorkShiftService();
-    return workshiftService.getValue(this.context.workShifts, employee, date);
+    return this.context.getShift(
+      employeeId,
+      date,
+      ApplicationContext.getInstance()
+        .getActionService()
+        .getDefaultLabel()
+    );
   }
   @stats("WorkShiftTable.cached")
   @cacheable(
     "WorkShiftTable.getEmployeeErrors",
-    (args: any[]) => args[0] + "_" + (args[1] as Date).toISOString(),
+    (args: any[]) => args[0] + "_" + args[1].toISOString(),
     new CacheConfigFactory()
       .ttl(500)
       .maxSize(2000)
@@ -364,6 +370,9 @@ export default class WorkShiftTable extends Vue {
   )
   @stats("WorkShiftTable.raw")
   getEmployeeErrors(employeeId: number, day: Date): Array<string> {
+    if (!this.inlineValidation) {
+      return [];
+    }
     return ApplicationContext.getInstance()
       .getShiftValidationService()
       .getEmployeeErrors(employeeId, day, this.context);
@@ -375,7 +384,7 @@ export default class WorkShiftTable extends Vue {
   @stats("WorkShiftTable.cached")
   @cacheable(
     "WorkShiftTable.getGroupErrors",
-    (args: any[]) => args[0] + "_" + (args[1] as Date).toISOString(),
+    (args: any[]) => args[0] + "_" + args[1].toISOString(),
     new CacheConfigFactory()
       .ttl(500)
       .maxSize(2000)
@@ -383,6 +392,9 @@ export default class WorkShiftTable extends Vue {
   )
   @stats("WorkShiftTable.raw")
   getGroupErrors(groupId: number, day: Date): Array<string> {
+    if (!this.inlineValidation) {
+      return [];
+    }
     return ApplicationContext.getInstance()
       .getShiftValidationService()
       .getGroupErrors(groupId, day, this.context);
@@ -394,7 +406,7 @@ export default class WorkShiftTable extends Vue {
   @stats("WorkShiftTable.cached")
   @cacheable(
     "WorkShiftTable.getSubgroupErrors",
-    (args: any[]) => args[0] + "_" + (args[1] as Date).toISOString(),
+    (args: any[]) => args[0] + "_" + args[1].toISOString(),
     new CacheConfigFactory()
       .ttl(500)
       .maxSize(2000)
@@ -402,6 +414,9 @@ export default class WorkShiftTable extends Vue {
   )
   @stats("WorkShiftTable.raw")
   getSubgroupErrors(groupId: number, day: Date): Array<string> {
+    if (!this.inlineValidation) {
+      return [];
+    }
     return ApplicationContext.getInstance()
       .getShiftValidationService()
       .getSubgroupErrors(groupId, day, this.context);
@@ -412,6 +427,9 @@ export default class WorkShiftTable extends Vue {
   }
   @stats("WorkShiftTable")
   getCarsErrors(action: Action, day: Date): Array<string> {
+    if (!this.inlineValidation) {
+      return [];
+    }
     return ApplicationContext.getInstance()
       .getShiftValidationService()
       .getCarsErrors(day, action, this.context);
