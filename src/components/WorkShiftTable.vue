@@ -1,27 +1,6 @@
 <template>
   <v-container fluid>
     <v-row>
-      <v-col>
-        <div class="hello">
-          <h1>Turni Lavorativi</h1>
-        </div>
-      </v-col>
-    </v-row>
-    <v-row>
-      <v-col>
-        <MonthPicker :initialValue="context.from" @update-date="handleUpdateFromDate" />
-      </v-col>
-      <v-col>
-        <v-btn v-on:click="exportWorkShift()" color="primary">Export</v-btn>
-      </v-col>
-      <v-col>
-        <v-btn v-on:click="clearData()" color="error">Clear</v-btn>
-      </v-col>
-      <v-col>
-        <v-btn v-on:click="randomize()">Randomize</v-btn>
-      </v-col>
-    </v-row>
-    <v-row>
       <v-simple-table class="single-line" dense>
         <template v-slot:default>
           <thead>
@@ -74,7 +53,7 @@
                   <template v-slot:activator="{ on: onTooltip }">
                     <span v-on="onTooltip">
                       <WorkShiftInput
-                        :initialValue="getShift(employeeId, day(dayId))"
+                        :value="getShift(employeeId, day(dayId))"
                         :items="availableStates()"
                         :hasErrors="true"
                         @update-value="
@@ -92,7 +71,7 @@
                 </v-tooltip>
                 <WorkShiftInput
                   v-else
-                  :initialValue="getShift(employeeId, day(dayId))"
+                  :value="getShift(employeeId, day(dayId))"
                   :items="availableStates()"
                   :hasErrors="false"
                   @update-value="v => handleShift(employeeId, day(dayId), v)"
@@ -201,8 +180,6 @@ import { factory } from "@/utils/ConfigLog4j";
 import { Action } from "@/models/Action";
 import { stats, cacheable } from "@/utils/Decorators";
 import { CacheConfig, CacheConfigFactory } from "@/utils/Cache";
-import { Shift } from "@/models/Shift";
-import { ArrayUtil } from "@/utils/ArrayUtil";
 
 @Component({ components: { WorkShiftInput, MonthPicker } })
 export default class WorkShiftTable extends Vue {
@@ -217,26 +194,11 @@ export default class WorkShiftTable extends Vue {
     this.$store.commit("increment");
     this.logger.info(() => `Store, increment: ${this.$store.state.count}`);
   }
-  handleUpdateFromDate(value: string): void {
-    this.logger.info(() => `Update from date: ${value}`);
-    const dateService = ApplicationContext.getInstance().getDateService();
-    this.context.date = dateService.parse(value);
-  }
   handleShift(employeeId: number, date: Date, value: string): void {
     this.logger.info(
       () => `New shift, employee ${employeeId}, day ${date}, value=${value}`
     );
-    const employee = this.context.getEmployee(employeeId);
-
-    ArrayUtil.delete(
-      this.context.workShifts,
-      s =>
-        s.employeeId == employee.id &&
-        s.date.toISOString() == date.toISOString()
-    );
-    const shift = new Shift(employeeId, date, value);
-    this.context.workShifts.push(shift);
-    //Vue.set(this.context.workShifts, key, value);
+    this.$emit("update-shift", employeeId, date, value);
   }
   @stats("WorkShiftTable")
   getShift(employeeId: number, date: Date): string {
@@ -313,14 +275,14 @@ export default class WorkShiftTable extends Vue {
   rangeStart(): Date {
     return ApplicationContext.getInstance()
       .getWorkShiftService()
-      .rangeStart(this.context);
+      .rangeStart(this.context.date);
   }
   @cacheable("WorkShiftTable.rangeEnd", (args: any[]) => "")
   @stats("WorkShiftTable")
   rangeEnd(): Date {
     return ApplicationContext.getInstance()
       .getWorkShiftService()
-      .rangeEnd(this.context);
+      .rangeEnd(this.context.date);
   }
   @stats("WorkShiftTable")
   isEndOfWeek(date: Date): boolean {
@@ -403,34 +365,6 @@ export default class WorkShiftTable extends Vue {
   }
   afternoonAction(): Action {
     return Action.AFTERNOON;
-  }
-  randomize(): void {
-    const employeeIds = this.context.sortedEmployees();
-    const days = this.days();
-    const labels = ["M", "M*", "P", "mal"];
-    const random = (size: number) => Math.floor(Math.random() * size);
-    for (let i = 0; i < 500; i++) {
-      const employeeId = employeeIds[random(employeeIds.length)];
-      const day = this.day(random(days - 1) + 1);
-      const label = labels[random(labels.length)];
-      this.handleShift(employeeId, day, label);
-    }
-  }
-  clearData(): void {
-    const employeeIds = this.context.sortedEmployees();
-    const label = ApplicationContext.getInstance()
-      .getActionService()
-      .getDefaultLabel();
-    for (let day = 1; day < this.days(); day++) {
-      employeeIds.forEach(employeeId =>
-        this.handleShift(employeeId, this.day(day), label)
-      );
-    }
-  }
-  exportWorkShift(): void {
-    ApplicationContext.getInstance()
-      .getWorkShiftService()
-      .export(this.context);
   }
   availableStates(): Array<string> {
     return ApplicationContext.getInstance()

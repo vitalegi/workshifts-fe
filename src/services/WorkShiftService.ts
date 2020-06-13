@@ -5,7 +5,6 @@ import { stats, cacheable } from "@/utils/Decorators";
 import { CacheConfigFactory } from "@/utils/Cache";
 import { ContextSerializer } from "@/transformer/ContextSerializer";
 import { ApplicationContext } from "./ApplicationContext";
-import { ContextDeserializer } from "@/transformer/ContextDeserializer";
 import { Shift } from "@/models/Shift";
 import { Employee } from "@/models/Employee";
 
@@ -77,45 +76,15 @@ export class WorkShiftService {
       .getAction(label);
   }
 
-  public export(context: WorkContext) {
-    fetch("https://jsonplaceholder.typicode.com/todos", {
-      headers: { "Content-Type": "application/json; charset=utf-8" },
-      method: "POST",
-      body: JSON.stringify(
-        new ContextSerializer().serializeContext(
-          context,
-          this.rangeStart(context),
-          this.rangeEnd(context)
-        )
-      ),
-    })
-      .then((response) => response.json())
-      .then((data) => "");
-
-    const serialize = (ctx: WorkContext) => {
-      return new ContextSerializer().serializeContext(
-        ctx,
-        this.rangeStart(ctx),
-        this.rangeEnd(ctx)
-      );
-    };
-
-    const newContext = new ContextDeserializer().deserializeContext(
-      serialize(context)
-    );
-    console.log("1: " + JSON.stringify(serialize(context)));
-    console.log("2: " + JSON.stringify(serialize(newContext)));
-  }
-
-  rangeStart(context: WorkContext): Date {
+  rangeStart(date: Date): Date {
     const dateService = ApplicationContext.getInstance().getDateService();
-    const startOfMonth = dateService.getStartOfMonth(context.date);
+    const startOfMonth = dateService.getStartOfMonth(date);
     return dateService.getStartOfWeek(startOfMonth);
   }
 
-  rangeEnd(context: WorkContext): Date {
+  rangeEnd(date: Date): Date {
     const dateService = ApplicationContext.getInstance().getDateService();
-    const endOfMonth = dateService.getEndOfMonth(context.date);
+    const endOfMonth = dateService.getEndOfMonth(date);
     return dateService.getEndOfWeek(endOfMonth);
   }
 }

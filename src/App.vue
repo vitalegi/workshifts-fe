@@ -30,7 +30,24 @@
     </v-app-bar>
 
     <v-content>
-      <WorkShiftTable :context="context" />
+      <v-row justify="space-between">
+        <MonthPicker :initialValue="context.from" @update-date="handleUpdateFromDate" />
+        <WorkShiftActions
+          @export-json="handleExportJson"
+          @import-json="handleImportJson"
+          @export-excel="handleExportExcel"
+          @clear-data="handleClearData"
+          @randomize="handleRandomize"
+        />
+      </v-row>
+      <v-row>
+        <WorkShiftTable
+          :context="context"
+          @update-shift="
+          (employeeId, day, value) => handleShift(employeeId, day, value)
+        "
+        />
+      </v-row>
     </v-content>
   </v-app>
 </template>
@@ -38,6 +55,7 @@
 <script lang="ts">
 import { Component, Vue } from "vue-property-decorator";
 import WorkShiftTable from "@/components/WorkShiftTable.vue";
+import WorkShiftActions from "@/components/WorkShiftActions.vue";
 import { WorkContext } from "@/models/WorkContext";
 import { ApplicationContext } from "@/services/ApplicationContext";
 import { Employee } from "@/models/Employee";
@@ -46,13 +64,23 @@ import { Subgroup } from "@/models/Subgroup";
 import { DayOfWeek } from "@/utils/DayOfWeek";
 import { Action } from "@/models/Action";
 import { WeekConstraint } from "@/models/WeekConstraint";
+import { factory } from "@/utils/ConfigLog4j";
+import { ArrayUtil } from "@/utils/ArrayUtil";
+import { Shift } from "@/models/Shift";
+import MonthPicker from "@/components/MonthPicker.vue";
+import { ContextDeserializer } from "./transformer/ContextDeserializer";
+import { ContextSerializer } from "./transformer/ContextSerializer";
+import { saveAs } from "file-saver";
 
 @Component({
   components: {
-    WorkShiftTable
+    WorkShiftTable,
+    MonthPicker,
+    WorkShiftActions
   }
 })
 export default class App extends Vue {
+  private logger = factory.getLogger("App");
   private context: WorkContext;
 
   constructor() {
@@ -115,10 +143,123 @@ export default class App extends Vue {
 
     App.employee(context, 21, "BEZZI SILVIA", 8, 5, 5, 2);
     App.employee(context, 22, "BRUNELLO VANIA", 8, 5, 5, 2);
-
-    context.availableCars.total = 2;
   }
 
+  handleExportExcel() {
+    this.logger.info(() => `Excel export`);
+
+    fetch("http://localhost:8081/workshifts-rest/export", {
+      headers: { "Content-Type": "application/json; charset=utf-8" },
+      method: "POST",
+      body: JSON.stringify(
+        new ContextSerializer().serializeContext(
+          this.context,
+          this.rangeStart(),
+          this.rangeEnd()
+        )
+      )
+    }).then(response => {
+      const blob = response.blob();
+      blob.then(b => {
+        const filename = "export.xlsx";
+        this.logger.info(() => `Save file as ${filename}`);
+        saveAs(b, filename);
+      });
+    });
+  }
+
+  handleExportJson() {
+    this.logger.info(() => `Json export`);
+    const obj = new ContextSerializer().serializeContext(
+      this.context,
+      this.rangeStart(),
+      this.rangeEnd()
+    );
+    const content = JSON.stringify(obj);
+    const blob = new Blob([content], { type: "application/json" });
+    saveAs(blob, "content.json");
+  }
+
+  handleImportJson(file: File) {
+    this.logger.info(() => `importJson`);
+    if (!file) {
+      this.logger.info(() => `No selected file`);
+      return null;
+    }
+    const reader = new FileReader();
+    reader.readAsText(file);
+    reader.onload = () => {
+      const content = reader.result;
+      this.logger.info(() => `File read completed`);
+      if (content != null) {
+        const json = content as string;
+        const obj = JSON.parse(json);
+        this.logger.info(() => `File is a valid json`);
+        this.context = new ContextDeserializer().deserializeContext(obj);
+        this.logger.info(() => `File is imported`);
+      }
+    };
+  }
+
+  handleUpdateFromDate(value: string): void {
+    this.logger.info(() => `Update from date: ${value}`);
+    const dateService = ApplicationContext.getInstance().getDateService();
+    this.context.date = dateService.parse(value);
+  }
+  handleClearData(): void {
+    this.context.workShifts.splice(0, this.context.workShifts.length);
+  }
+  handleRandomize(): void {
+    const employeeIds = this.context.sortedEmployees();
+    const days = this.days();
+    const labels = ["M", "M*", "P", "mal"];
+    const random = (size: number) => Math.floor(Math.random() * size);
+    for (let i = 0; i < 500; i++) {
+      const employeeId = employeeIds[random(employeeIds.length)];
+      const day = this.day(random(days - 1) + 1);
+      const label = labels[random(labels.length)];
+      this.handleShift(employeeId, day, label);
+    }
+  }
+  exportWorkShift(): void {
+    this.$emit("export");
+  }
+  days(): number {
+    return ApplicationContext.getInstance()
+      .getDateService()
+      .range(this.rangeStart(), this.rangeEnd()).length;
+  }
+  day(index: number): Date {
+    const d = ApplicationContext.getInstance()
+      .getDateService()
+      .range(this.rangeStart(), this.rangeEnd())[index - 1];
+    return d;
+  }
+  rangeStart(): Date {
+    return ApplicationContext.getInstance()
+      .getWorkShiftService()
+      .rangeStart(this.context.date);
+  }
+  rangeEnd(): Date {
+    return ApplicationContext.getInstance()
+      .getWorkShiftService()
+      .rangeEnd(this.context.date);
+  }
+  handleShift(employeeId: number, date: Date, value: string): void {
+    this.logger.info(
+      () => `New shift, employee ${employeeId}, day ${date}, value=${value}`
+    );
+    const employee = this.context.getEmployee(employeeId);
+
+    ArrayUtil.delete(
+      this.context.workShifts,
+      s =>
+        s.employeeId == employee.id &&
+        s.date.toISOString() == date.toISOString()
+    );
+    const shift = new Shift(employeeId, date, value);
+    this.context.workShifts.push(shift);
+  }
   private static employee(
     context: WorkContext,
     id: number,

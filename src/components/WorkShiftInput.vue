@@ -28,24 +28,11 @@ import { Component, Prop, Vue } from "vue-property-decorator";
 @Component
 export default class WorkShiftInput extends Vue {
   @Prop() private items!: Array<string>;
-  @Prop() private initialValue!: string;
-  private currentValue = "";
+  @Prop() private value?: string;
   @Prop() private hasErrors!: boolean;
 
-  public get value(): string {
-    if (this.currentValue == "") {
-      return this.initialValue;
-    }
-    return this.currentValue;
-  }
-
-  public set value(value: string) {
-    this.currentValue = value;
-  }
-
   private select(value: string) {
-    this.value = value;
-    this.$emit("update-value", this.value);
+    this.$emit("update-value", value);
   }
 }
 </script>

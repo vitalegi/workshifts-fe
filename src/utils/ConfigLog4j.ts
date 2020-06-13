@@ -13,6 +13,8 @@ import {
 const options = new LoggerFactoryOptions()
   .addLogGroupRule(new LogGroupRule(new RegExp("services.+"), LogLevel.Info))
   .addLogGroupRule(new LogGroupRule(new RegExp("utils.Decorators.StatsCollector"), LogLevel.Error))
+  .addLogGroupRule(new LogGroupRule(new RegExp("utils.Cache.stats"), LogLevel.Error))
+  .addLogGroupRule(new LogGroupRule(new RegExp("utils.Stats.stats"), LogLevel.Error))
   .addLogGroupRule(new LogGroupRule(new RegExp(".+"), LogLevel.Info));
 
 // Create a named loggerfactory and pass in the options and export the factory.

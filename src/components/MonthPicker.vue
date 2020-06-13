@@ -1,5 +1,5 @@
 <template>
-  <v-row justify="center">
+  <v-col md="2">
     <v-menu
       v-model="menu"
       :close-on-content-click="false"
@@ -11,8 +11,9 @@
       <template v-slot:activator="{ on }">
         <v-text-field
           v-model="currentValue"
-          label="Picker without buttons"
+          label="Mese di riferimento"
           readonly
+        width="30"
           v-on="on"
         ></v-text-field>
       </template>
@@ -23,7 +24,7 @@
         v-on:change="update"
       ></v-date-picker>
     </v-menu>
-  </v-row>
+  </v-col>
 </template>
 
 <script lang="ts">
