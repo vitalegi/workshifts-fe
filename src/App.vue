@@ -143,6 +143,8 @@ export default class App extends Vue {
 
     App.employee(context, 21, "BEZZI SILVIA", 8, 5, 5, 2);
     App.employee(context, 22, "BRUNELLO VANIA", 8, 5, 5, 2);
+
+    context.availableCars.total = 5;
   }
 
   handleExportExcel() {

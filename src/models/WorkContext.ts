@@ -60,19 +60,25 @@ export class WorkContext {
     });
     return employees.map(e => e.id);
   }
-  public getSubgroup(employeeId: number): Subgroup | undefined {
+  public getSubgroupByEmployee(employeeId: number): Subgroup | undefined {
     const subgroupId = this.getEmployee(employeeId).subgroupId;
     if (subgroupId) {
-      return this.subgroups.get(subgroupId);
+      return this.getSubgroupById(subgroupId);
     }
     return undefined;
   }
-  public getGroup(employeeId: number): Group | undefined {
-    const subgroup = this.getSubgroup(employeeId);
+  public getSubgroupById(subgroupId: number): Subgroup | undefined {
+    return this.subgroups.get(subgroupId);
+  }
+  public getGroupByEmployee(employeeId: number): Group | undefined {
+    const subgroup = this.getSubgroupByEmployee(employeeId);
     if (subgroup && subgroup.parent) {
       return this.groups.get(subgroup.parent);
     }
     return undefined;
+  }
+  public getGroupById(groupId: number): Group | undefined {
+    return this.groups.get(groupId);
   }
 
   public set date(date: Date) {
