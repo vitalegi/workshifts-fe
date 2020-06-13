@@ -8,12 +8,47 @@ import { stats } from "@/utils/Decorators";
 
 abstract class AbstractEmployeeShiftValidator {
   protected dateService = ApplicationContext.getInstance().getDateService();
+  protected workShiftService = ApplicationContext.getInstance().getWorkShiftService();
 
   public abstract errors(
     employeeId: number | null,
     day: Date,
     context: WorkContext
   ): Array<string>;
+
+  @stats("ShiftValidationService.AbstractEmployeeShiftValidator")
+  protected isWeekendWorking(
+    employeeId: number,
+    day: Date,
+    context: WorkContext
+  ): boolean {
+    const sunday = this.dateService.getEndOfWeek(day);
+    const weekend = [this.dateService.addDays(sunday, -1), sunday];
+    const tot = this.workShiftService.countByEmployeesDatesActions(
+      [employeeId],
+      weekend,
+      [Action.MORNING, Action.AFTERNOON, Action.AWAY],
+      context
+    );
+    return tot > 0;
+  }
+  
+  @stats("ShiftValidationService.AbstractEmployeeShiftValidator")
+  protected isPreviousWeekendWorking(
+    employeeId: number,
+    day: Date,
+    context: WorkContext
+  ): boolean {
+    const monday = this.dateService.getStartOfWeek(day);
+    const weekend = [this.dateService.addDays(monday, -2), this.dateService.addDays(monday, -1)];
+    const tot = this.workShiftService.countByEmployeesDatesActions(
+      [employeeId],
+      weekend,
+      [Action.MORNING, Action.AFTERNOON, Action.AWAY],
+      context
+    );
+    return tot > 0;
+  }
 }
 
 class TotalShiftsPerWeek extends AbstractEmployeeShiftValidator {
@@ -29,32 +64,25 @@ class TotalShiftsPerWeek extends AbstractEmployeeShiftValidator {
     if (employeeId == null) {
       return errors;
     }
-    const workShiftService = ApplicationContext.getInstance().getWorkShiftService();
     const range = this.dateService.getWeek(day);
 
-    const tot =
-      workShiftService.countByEmployeesDatesAction(
-        [employeeId],
-        range,
-        Action.MORNING,
-        context
-      ) +
-      workShiftService.countByEmployeesDatesAction(
-        [employeeId],
-        range,
-        Action.AFTERNOON,
-        context
-      ) +
-      workShiftService.countByEmployeesDatesAction(
-        [employeeId],
-        range,
-        Action.AWAY,
-        context
-      );
+    const tot = this.workShiftService.countByEmployeesDatesActions(
+      [employeeId],
+      range,
+      [Action.MORNING, Action.AFTERNOON, Action.AWAY],
+      context
+    );
     const employee = context.getEmployee(employeeId);
-    if (tot != employee.totWeekShifts) {
+    let expected = employee.totWeekShifts;
+    if (this.isWeekendWorking(employeeId, day, context)) {
+      expected++;
+    }
+    if (this.isPreviousWeekendWorking(employeeId, day, context)) {
+      expected--;
+    }
+    if (tot != expected) {
       errors.push(
-        `${employee.name} dovrebbe lavorare ${employee.totWeekShifts} turni in una settimana, presenti ${tot}`
+        `${employee.name} dovrebbe lavorare ${expected} turni in una settimana, presenti ${tot}`
       );
     }
     return errors;
@@ -74,19 +102,25 @@ class MaxShiftByTypePerWeek extends AbstractEmployeeShiftValidator {
     if (employeeId == null) {
       return errors;
     }
-    const workShiftService = ApplicationContext.getInstance().getWorkShiftService();
     const range = this.dateService.getWeek(day);
 
     const employee = context.getEmployee(employeeId);
-    const expectedMornings = employee.maxWeekMornings;
-    const actualMornings = workShiftService.countByEmployeesDatesAction(
+    let expectedMornings = employee.maxWeekMornings;
+    if (this.isWeekendWorking(employeeId, day, context)) {
+      expectedMornings++;
+    }
+    if (this.isPreviousWeekendWorking(employeeId, day, context)) {
+      expectedMornings--;
+    }
+
+    const actualMornings = this.workShiftService.countByEmployeesDatesAction(
       [employeeId],
       range,
       Action.MORNING,
       context
     );
     const expectedAfternoons = employee.maxWeekAfternoons;
-    const actualAfternoons = workShiftService.countByEmployeesDatesAction(
+    const actualAfternoons = this.workShiftService.countByEmployeesDatesAction(
       [employeeId],
       range,
       Action.AFTERNOON,
@@ -109,7 +143,6 @@ class MaxShiftByTypePerWeek extends AbstractEmployeeShiftValidator {
 class MaxCarsPerShift extends AbstractEmployeeShiftValidator {
   private logger = factory.getLogger("services.MaxCarsPerShift");
   private action: Action;
-  private workShiftService = ApplicationContext.getInstance().getWorkShiftService();
 
   public constructor(action: Action) {
     super();
@@ -172,7 +205,8 @@ abstract class AbstractMinShiftsPerGroup {
 
     const employeeIdsInTargetGroup = Array.from(context.employees.values())
       .filter(
-        (employee) => this.getGroupByEmployee(employee, context)?.id == targetGroup.id
+        (employee) =>
+          this.getGroupByEmployee(employee, context)?.id == targetGroup.id
       )
       .map((employee) => employee.id);
 
@@ -230,10 +264,7 @@ class MinShiftsPerGroup extends AbstractMinShiftsPerGroup {
   ): Array<string> {
     return super.errors(employeeId, day, context);
   }
-  protected getGroup(
-    groupId: number,
-    context: WorkContext
-  ): Group | undefined {
+  protected getGroup(groupId: number, context: WorkContext): Group | undefined {
     return context.getGroupById(groupId);
   }
 
@@ -253,11 +284,8 @@ class MinShiftsPerSubGroup extends AbstractMinShiftsPerGroup {
   ): Array<string> {
     return super.errors(employeeId, day, context);
   }
-  
-  protected getGroup(
-    groupId: number,
-    context: WorkContext
-  ): Group | undefined {
+
+  protected getGroup(groupId: number, context: WorkContext): Group | undefined {
     return context.getSubgroupById(groupId);
   }
 
@@ -282,7 +310,7 @@ export class ShiftValidationService {
       new TotalShiftsPerWeek(),
       new MaxShiftByTypePerWeek(),
       new MaxCarsPerShift(Action.MORNING),
-      new MaxCarsPerShift(Action.AFTERNOON)
+      new MaxCarsPerShift(Action.AFTERNOON),
     ]);
   }
 
@@ -291,18 +319,16 @@ export class ShiftValidationService {
     day: Date,
     context: WorkContext
   ): Array<string> {
-    return this.groupErrors(groupId, day, context, [
-      new MinShiftsPerGroup()
-    ]);
+    return this.groupErrors(groupId, day, context, [new MinShiftsPerGroup()]);
   }
-  
+
   public getSubgroupErrors(
     groupId: number,
     day: Date,
     context: WorkContext
   ): Array<string> {
     return this.groupErrors(groupId, day, context, [
-      new MinShiftsPerSubGroup()
+      new MinShiftsPerSubGroup(),
     ]);
   }
 
@@ -311,7 +337,9 @@ export class ShiftValidationService {
     action: Action,
     context: WorkContext
   ): Array<string> {
-    return this.employeeErrors(null, day, context, [new MaxCarsPerShift(action)]);
+    return this.employeeErrors(null, day, context, [
+      new MaxCarsPerShift(action),
+    ]);
   }
 
   protected employeeErrors(
@@ -331,7 +359,7 @@ export class ShiftValidationService {
     );
     return errors;
   }
-  
+
   protected groupErrors(
     groupId: number | null,
     day: Date,

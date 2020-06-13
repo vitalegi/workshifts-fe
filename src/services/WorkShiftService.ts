@@ -3,7 +3,6 @@ import { factory } from "../utils/ConfigLog4j";
 import { Action } from "@/models/Action";
 import { stats, cacheable } from "@/utils/Decorators";
 import { CacheConfigFactory } from "@/utils/Cache";
-import { ContextSerializer } from "@/transformer/ContextSerializer";
 import { ApplicationContext } from "./ApplicationContext";
 import { Shift } from "@/models/Shift";
 import { Employee } from "@/models/Employee";
@@ -33,6 +32,19 @@ export class WorkShiftService {
         .map((date) => this.getAction(context, employeeId, date))
         .filter((a) => a == action);
     }).length;
+  }
+
+  public countByEmployeesDatesActions(
+    employees: Array<number>,
+    dates: Array<Date>,
+    actions: Array<Action>,
+    context: WorkContext
+  ): number {
+    return actions
+      .map((action) =>
+        this.countByEmployeesDatesAction(employees, dates, action, context)
+      )
+      .reduce((prev, curr) => prev + curr);
   }
 
   public hasEntry(

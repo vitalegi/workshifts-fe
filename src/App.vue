@@ -222,12 +222,12 @@ export default class App extends Vue {
     this.context.date = dateService.parse(value);
   }
   handleClearData(): void {
-    this.context.workShifts.splice(0, this.context.workShifts.length);
+    this.context.deleteShifts();
   }
   handleRandomize(): void {
     const employeeIds = this.context.sortedEmployees();
     const days = this.days();
-    const labels = ["M", "M*", "P", "mal"];
+    const labels = ["M", "M*", "P", "P*", "mal"];
     const random = (size: number) => Math.floor(Math.random() * size);
     for (let i = 0; i < 500; i++) {
       const employeeId = employeeIds[random(employeeIds.length)];

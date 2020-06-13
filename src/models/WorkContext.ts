@@ -98,10 +98,7 @@ export class WorkContext {
     if (!map.has(employeeId)) {
       map.set(employeeId, new Map<string, string>());
     }
-    const dateMap = map.get(employeeId) as Map<string, string>;
-    if (!dateMap.has(dateService.format(date))) {
-      dateMap.set(dateService.format(date), value);
-    }
+    map.get(employeeId)?.set(dateService.format(date), value);
   }
 
   public getShift(employeeId: number, date: Date, defaultValue: string): string {
@@ -114,6 +111,11 @@ export class WorkContext {
       return value;
     }
     return defaultValue;
+  }
+
+  public deleteShifts():void {
+    this._workShiftsMap = new Map<number, Map<string, string>>();
+    this.workShifts.splice(0, this.workShifts.length);
   }
 
   public set date(date: Date) {

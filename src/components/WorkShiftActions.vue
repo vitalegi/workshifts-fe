@@ -6,9 +6,9 @@
         label="Validazione attiva"
         @change="handleValidation"
       ></v-switch>
-      <v-btn class="ma-2" color="primary" dark @click="handleExportJson"
-        >Export
-        <v-icon dark right>mdi-download</v-icon>
+      <v-btn class="ma-2" color="primary" dark @click="handleExportJson">
+        Save
+        <v-icon dark right>mdi-content-save</v-icon>
       </v-btn>
       <v-menu
         :close-on-content-click="false"
@@ -19,8 +19,8 @@
       >
         <template v-slot:activator="{ on }">
           <v-btn class="ma-2" color="primary" dark v-on="on"
-            >Import
-            <v-icon dark right>mdi-upload</v-icon>
+            >Open
+            <v-icon dark right>mdi-file</v-icon>
           </v-btn>
         </template>
         <v-file-input label="Import" @change="handleImportJson" />
