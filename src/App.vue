@@ -52,6 +52,7 @@ import MonthPicker from "@/components/MonthPicker.vue";
 import { ContextDeserializer } from "./transformer/ContextDeserializer";
 import { ContextSerializer } from "./transformer/ContextSerializer";
 import { saveAs } from "file-saver";
+import { OptimizationContextSerializer } from "./services/OptimizeShiftsService";
 
 @Component({
   components: {
@@ -212,12 +213,21 @@ export default class App extends Vue {
     }
   }
   handleOptimize(): void {
-    ApplicationContext.getInstance()
+    this.logger.info(() => `Optimize`);
+
+    const request = ApplicationContext.getInstance()
       .getOptimizeShiftsService()
       .optimize(this.context);
-  }
-  exportWorkShift(): void {
-    this.$emit("export");
+
+    fetch("http://localhost:8081/workshifts-rest/export", {
+      headers: { "Content-Type": "application/json; charset=utf-8" },
+      method: "POST",
+      body: JSON.stringify(
+        new OptimizationContextSerializer().serialize(request)
+      )
+    }).then(response => {
+      this.logger.info(() => `Process`);
+    });
   }
   days(): number {
     return ApplicationContext.getInstance()

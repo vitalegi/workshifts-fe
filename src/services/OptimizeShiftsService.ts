@@ -117,6 +117,47 @@ class OptimizationContext {
   public constraintNames(): Array<string> {
     return Array.from(this.constraints.entries()).map(e => e[0]);
   }
+  public variableValues(): Array<Variable> {
+    return Array.from(this.variables.values());
+  }
+  public constraintValues(): Array<Constraint> {
+    return Array.from(this.constraints.values());
+  }
+}
+
+export class OptimizationContextSerializer {
+  public serialize(context: OptimizationContext): object {
+    const outCtx = {
+      variables: context.variableValues().map(v => this.serializeVariable(v)),
+      constraints: context
+        .constraintValues()
+        .map(c => this.serializeConstraint(c))
+    };
+    return outCtx;
+  }
+
+  protected serializeVariable(variable: Variable): object {
+    return {
+      name: variable.name,
+      max: variable.max,
+      min: variable.min
+    };
+  }
+  protected serializeConstraint(constraint: Constraint): object {
+    return {
+      name: constraint.name,
+      max: constraint.max,
+      min: constraint.min,
+      coefficients: constraint.coefficients.map(c =>
+        this.serializeCoefficient(c)
+      )
+    };
+  }
+  protected serializeCoefficient(coefficient: Coefficient): object {
+    const obj = this.serializeVariable(coefficient.variable);
+    (obj as any).coefficient = coefficient.coefficient;
+    return obj;
+  }
 }
 
 class OptimizeUtil {
@@ -534,7 +575,7 @@ class SubgroupDailyConstraint extends AbstractGroupDailyConstraint {
 }
 export class OptimizeShiftsService extends OptimizeUtil {
   @stats("OptimizeShiftsService")
-  public optimize(context: WorkContext) {
+  public optimize(context: WorkContext): OptimizationContext {
     const opt = new OptimizationContext();
 
     const range = this.range(context.date);
@@ -618,6 +659,7 @@ export class OptimizeShiftsService extends OptimizeUtil {
           opt.constraintNames().length
         } constraints`
     );
+    return opt;
   }
   protected range(date: Date): Array<Date> {
     return this.dateService.range(this.rangeStart(date), this.rangeEnd(date));
