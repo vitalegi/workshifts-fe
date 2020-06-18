@@ -2,42 +2,15 @@
   <v-app>
     <v-app-bar app color="primary" dark>
       <div class="d-flex align-center">
-        <v-img
-          alt="Vuetify Logo"
-          class="shrink mr-2"
-          contain
-          src="https://cdn.vuetifyjs.com/images/logos/vuetify-logo-dark.png"
-          transition="scale-transition"
-          width="40"
-        />
-
-        <v-img
-          alt="Vuetify Name"
-          class="shrink mt-1 hidden-sm-and-down"
-          contain
-          min-width="100"
-          src="https://cdn.vuetifyjs.com/images/logos/vuetify-name-dark.png"
-          width="100"
-        />
+        <h1>Turni Lavorativi</h1>
       </div>
-
-      <v-spacer></v-spacer>
-
-      <v-btn
-        href="https://github.com/vuetifyjs/vuetify/releases/latest"
-        target="_blank"
-        text
-      >
-        <span class="mr-2">Latest Release</span>
-        <v-icon>mdi-open-in-new</v-icon>
-      </v-btn>
     </v-app-bar>
 
     <v-content>
       <v-row justify="space-between">
         <MonthPicker
           :initialValue="context.from"
-          @update-date="handleUpdateFromDate"
+          @update-date="handleUpdateDate"
         />
         <WorkShiftActions
           @update-validation="handleValidation"
@@ -46,6 +19,7 @@
           @export-excel="handleExportExcel"
           @clear-data="handleClearData"
           @randomize="handleRandomize"
+          @optimize="handleOptimize"
         />
       </v-row>
       <v-row>
@@ -74,8 +48,6 @@ import { DayOfWeek } from "@/utils/DayOfWeek";
 import { Action } from "@/models/Action";
 import { WeekConstraint } from "@/models/WeekConstraint";
 import { factory } from "@/utils/ConfigLog4j";
-import { ArrayUtil } from "@/utils/ArrayUtil";
-import { Shift } from "@/models/Shift";
 import MonthPicker from "@/components/MonthPicker.vue";
 import { ContextDeserializer } from "./transformer/ContextDeserializer";
 import { ContextSerializer } from "./transformer/ContextSerializer";
@@ -98,7 +70,7 @@ export default class App extends Vue {
     const dateService = ApplicationContext.getInstance().getDateService();
     const context = new WorkContext();
     this.context = context;
-    context.date = dateService.parse("2020-02-01");
+    context.date = dateService.parse(dateService.format(new Date()));
 
     App.group(context, 1, "Macro1", App.weekConstraint(0, 1, 1, 1));
     App.group(context, 2, "Macro2", App.weekConstraint(0, 1, 1, 1));
@@ -216,10 +188,13 @@ export default class App extends Vue {
     };
   }
 
-  handleUpdateFromDate(value: string): void {
-    this.logger.info(() => `Update from date: ${value}`);
+  handleUpdateDate(value: string): void {
+    this.logger.info(() => `Update date: ${value}`);
     const dateService = ApplicationContext.getInstance().getDateService();
     this.context.date = dateService.parse(value);
+
+    // make vue aware of the update
+    this.context.workShifts.length;
   }
   handleClearData(): void {
     this.context.deleteShifts();
@@ -235,6 +210,11 @@ export default class App extends Vue {
       const label = labels[random(labels.length)];
       this.handleShift(employeeId, day, label);
     }
+  }
+  handleOptimize(): void {
+    ApplicationContext.getInstance()
+      .getOptimizeShiftsService()
+      .optimize(this.context);
   }
   exportWorkShift(): void {
     this.$emit("export");

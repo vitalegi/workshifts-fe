@@ -10,9 +10,9 @@ export class WeekConstraintService {
     type?: string
   ): WeekConstraint[] {
     return constraints
-      .filter((c) => dayOfWeek != undefined && dayOfWeek == c.dayOfWeek)
-      .filter((c) => action != undefined && action == c.action)
-      .filter((c) => type != undefined && type == c.type);
+      .filter(c => dayOfWeek != undefined && dayOfWeek == c.dayOfWeek)
+      .filter(c => action != undefined && action == c.action)
+      .filter(c => type != undefined && type == c.type);
   }
 
   public getMinValue(

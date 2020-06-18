@@ -3,10 +3,10 @@ import { Action } from "../models/Action";
 export class ActionService {
   public getAllLabels(): Array<string> {
     const labels: string[] = [];
-    this.getLabels(Action.IDLE).forEach((value) => labels.push(value));
-    this.getLabels(Action.MORNING).forEach((value) => labels.push(value));
-    this.getLabels(Action.AFTERNOON).forEach((value) => labels.push(value));
-    this.getLabels(Action.AWAY).forEach((value) => labels.push(value));
+    this.getLabels(Action.IDLE).forEach(value => labels.push(value));
+    this.getLabels(Action.MORNING).forEach(value => labels.push(value));
+    this.getLabels(Action.AFTERNOON).forEach(value => labels.push(value));
+    this.getLabels(Action.AWAY).forEach(value => labels.push(value));
     return labels;
   }
 
@@ -44,7 +44,7 @@ export class ActionService {
   }
 
   public getActionFromName(actionName: string): Action {
-    const actions = this.getActions().filter((actionEnum) => {
+    const actions = this.getActions().filter(actionEnum => {
       const name = this.getActionName(actionEnum);
       return name == actionName;
     });

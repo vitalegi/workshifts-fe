@@ -9,7 +9,7 @@ export class Group {
     return this.doClone(new Group());
   }
 
-  protected doClone(clone:Group) {
+  protected doClone(clone: Group) {
     clone.id = this.id;
     clone.name = this.name;
     clone.constraints = this.constraints.map(c => c.clone());
@@ -37,8 +37,8 @@ export class Group {
   public get constraints() {
     return this._constraints;
   }
-  
-  public toString():string {
+
+  public toString(): string {
     return `id ${this.id} name ${this.name} constraints ${this.constraints}`;
   }
 }

@@ -13,19 +13,19 @@ export class ContextSerializer {
   public serializeContext(context: WorkContext, from: Date, to: Date): object {
     const outCtx = {
       date: this.dateService.format(context.date),
-      employees: Array.from(context.employees.values()).map((e) =>
+      employees: Array.from(context.employees.values()).map(e =>
         this.serializeEmployee(e)
       ),
-      groups: Array.from(context.groups.values()).map((g) =>
+      groups: Array.from(context.groups.values()).map(g =>
         this.serializeGroup(g)
       ),
-      subgroups: Array.from(context.subgroups.values()).map((g) =>
+      subgroups: Array.from(context.subgroups.values()).map(g =>
         this.serializeSubgroup(g)
       ),
       availableCars: context.availableCars.total,
-      shifts: Array.from(context.workShifts.values()).map((s) =>
+      shifts: Array.from(context.workShifts.values()).map(s =>
         this.serializeShift(s)
-      ),
+      )
     };
     return outCtx;
   }
@@ -37,16 +37,14 @@ export class ContextSerializer {
       subgroupId: employee.subgroupId,
       totWeekShifts: employee.totWeekShifts,
       maxWeekMornings: employee.maxWeekMornings,
-      maxWeekAfternoons: employee.maxWeekAfternoons,
+      maxWeekAfternoons: employee.maxWeekAfternoons
     };
   }
   protected serializeGroup(group: Group) {
     return {
       id: group.id,
       name: group.name,
-      constraints: group.constraints.map((c) =>
-        this.serializeWeekConstraint(c)
-      ),
+      constraints: group.constraints.map(c => this.serializeWeekConstraint(c))
     };
   }
   protected serializeSubgroup(subgroup: Subgroup) {
@@ -54,9 +52,9 @@ export class ContextSerializer {
       id: subgroup.id,
       name: subgroup.name,
       groupId: subgroup.parent,
-      constraints: subgroup.constraints.map((c) =>
+      constraints: subgroup.constraints.map(c =>
         this.serializeWeekConstraint(c)
-      ),
+      )
     };
   }
   protected serializeWeekConstraint(constraint: WeekConstraint) {
@@ -64,14 +62,14 @@ export class ContextSerializer {
       dayOfWeek: this.dateService.getDayOfWeekName(constraint.dayOfWeek),
       type: constraint.type,
       action: this.actionService.getActionName(constraint.action),
-      value: constraint.value,
+      value: constraint.value
     };
   }
   protected serializeShift(shift: Shift) {
     return {
       employeeId: shift.employeeId,
       date: this.dateService.format(shift.date),
-      value: shift.value,
+      value: shift.value
     };
   }
 }

@@ -3,7 +3,7 @@ export class Shift {
   private _date = new Date();
   private _value = "";
 
-  public constructor(employeeId:number, date:Date, value:string) {
+  public constructor(employeeId: number, date: Date, value: string) {
     this.employeeId = employeeId;
     this.date = date;
     this.value = value;

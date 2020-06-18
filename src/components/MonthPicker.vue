@@ -13,7 +13,7 @@
           v-model="currentValue"
           label="Mese di riferimento"
           readonly
-        width="30"
+          width="30"
           v-on="on"
         ></v-text-field>
       </template>

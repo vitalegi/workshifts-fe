@@ -93,7 +93,7 @@ export class DateService {
   }
 
   public getDayOfWeekFromName(dayOfWeekName: string): DayOfWeek {
-    const days = this.getDaysOfWeek().filter((dayEnum) => {
+    const days = this.getDaysOfWeek().filter(dayEnum => {
       const name = this.getDayOfWeekName(dayEnum);
       return name == dayOfWeekName;
     });
@@ -111,7 +111,7 @@ export class DateService {
       DayOfWeek.THURSDAY,
       DayOfWeek.FRIDAY,
       DayOfWeek.SATURDAY,
-      DayOfWeek.SUNDAY,
+      DayOfWeek.SUNDAY
     ];
   }
 
@@ -212,6 +212,19 @@ export class DateService {
       () => `Output: ${this.format(startOfWeek)} - ${this.format(endOfWeek)}`
     );
     return this.range(startOfWeek, endOfWeek);
+  }
+
+  public getWeeks(dates: Array<Date>): Array<Array<Date>> {
+    const weeksWithDuplicates = dates.map(date => this.getWeek(date));
+    const weeks = new Array<Array<Date>>();
+    const format = (dates: Array<Date>) => this.format(dates[0]);
+
+    weeksWithDuplicates.forEach(week => {
+      if (weeks.filter(w => format(w) == format(week)).length == 0) {
+        weeks.push(week);
+      }
+    });
+    return weeks;
   }
 
   private clone(date: Date): Date {

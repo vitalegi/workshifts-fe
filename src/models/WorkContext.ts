@@ -4,7 +4,7 @@ import { Subgroup } from "./Subgroup";
 import { Group } from "./Group";
 import { Shift } from "./Shift";
 import { ArrayUtil } from "@/utils/ArrayUtil";
-import { ApplicationContext } from '@/services/ApplicationContext';
+import { ApplicationContext } from "@/services/ApplicationContext";
 
 export class WorkContext {
   private _date: Date;
@@ -14,7 +14,7 @@ export class WorkContext {
   private _availableCars: AvailableCars;
 
   private _workShifts: Array<Shift>;
-  public _workShiftsMap = new Map<number, Map<string, string>>();
+  private _workShiftsMap: Map<number, Map<string, string>>;
 
   public constructor() {
     this._date = new Date();
@@ -23,6 +23,7 @@ export class WorkContext {
     this._subgroups = new Map();
     this._availableCars = new AvailableCars();
     this._workShifts = new Array<Shift>();
+    this._workShiftsMap = new Map<number, Map<string, string>>();
   }
 
   public getEmployee(id: number): Employee {
@@ -62,7 +63,21 @@ export class WorkContext {
       }
       return employee1.id - employee2.id;
     });
-    return employees.map((e) => e.id);
+    return employees.map(e => e.id);
+  }
+  public sortedGroups(): Array<number> {
+    return Array.from(this.groups.values())
+      .sort((group1, group2) => {
+        return group1.id - group2.id;
+      })
+      .map(group => group.id);
+  }
+  public sortedSubgroups(): Array<number> {
+    return Array.from(this.subgroups.values())
+      .sort((subgroup1, subgroup2) => {
+        return subgroup1.id - subgroup2.id;
+      })
+      .map(subgroup => subgroup.id);
   }
   public getSubgroupByEmployee(employeeId: number): Subgroup | undefined {
     const subgroupId = this.getEmployee(employeeId).subgroupId;
@@ -89,8 +104,9 @@ export class WorkContext {
     const dateService = ApplicationContext.getInstance().getDateService();
     ArrayUtil.delete(
       this.workShifts,
-      (s) =>
-        s.employeeId == employeeId && dateService.format(s.date) == dateService.format(date)
+      s =>
+        s.employeeId == employeeId &&
+        dateService.format(s.date) == dateService.format(date)
     );
     this.workShifts.push(new Shift(employeeId, date, value));
 
@@ -101,23 +117,28 @@ export class WorkContext {
     map.get(employeeId)?.set(dateService.format(date), value);
   }
 
-  public getShift(employeeId: number, date: Date, defaultValue: string): string {
+  public getShift(
+    employeeId: number,
+    date: Date,
+    defaultValue: string
+  ): string {
     // make vue aware of the update
     this.workShifts.length;
 
     const dateService = ApplicationContext.getInstance().getDateService();
-    const value = this._workShiftsMap.get(employeeId)?.get(dateService.format(date));
+    const value = this._workShiftsMap
+      .get(employeeId)
+      ?.get(dateService.format(date));
     if (value) {
       return value;
     }
     return defaultValue;
   }
 
-  public deleteShifts():void {
+  public deleteShifts(): void {
     this._workShiftsMap = new Map<number, Map<string, string>>();
     this.workShifts.splice(0, this.workShifts.length);
   }
-
   public set date(date: Date) {
     this._date = date;
   }

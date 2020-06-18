@@ -14,17 +14,19 @@ export class ContextDeserializer {
     const context = new WorkContext();
     context.date = this.dateValue(obj, "date");
     this.values(obj, "employees")
-      .map((o) => this.deserializeEmployee(o))
-      .forEach((o) => context.employees.set(o.id, o));
+      .map(o => this.deserializeEmployee(o))
+      .forEach(o => context.employees.set(o.id, o));
     this.values(obj, "groups")
-      .map((o) => this.deserializeGroup(o))
-      .forEach((o) => context.groups.set(o.id, o));
+      .map(o => this.deserializeGroup(o))
+      .forEach(o => context.groups.set(o.id, o));
     this.values(obj, "subgroups")
-      .map((o) => this.deserializeSubgroup(o))
-      .forEach((o) => context.subgroups.set(o.id, o));
-    context.workShifts = this.values(obj, "shifts").map((o) =>
-      this.deserializeShift(o)
-    );
+      .map(o => this.deserializeSubgroup(o))
+      .forEach(o => context.subgroups.set(o.id, o));
+    this.values(obj, "shifts")
+      .map(o => this.deserializeShift(o))
+      .forEach(shift => {
+        context.setShift(shift.employeeId, shift.date, shift.value);
+      });
     context.availableCars.total = this.numberValue(obj, "availableCars");
     return context;
   }
@@ -43,8 +45,8 @@ export class ContextDeserializer {
     g.id = this.numberValue(obj, "id");
     g.name = this.stringValue(obj, "name");
     this.values(obj, "constraints")
-      .map((constraint) => this.deserializeWeekConstraint(constraint))
-      .forEach((constraint) => g.constraints.push(constraint));
+      .map(constraint => this.deserializeWeekConstraint(constraint))
+      .forEach(constraint => g.constraints.push(constraint));
     return g;
   }
   protected deserializeSubgroup(obj: any): Subgroup {
@@ -53,8 +55,8 @@ export class ContextDeserializer {
     g.name = this.stringValue(obj, "name");
     g.parent = this.numberValue(obj, "groupId");
     this.values(obj, "constraints")
-      .map((constraint) => this.deserializeWeekConstraint(constraint))
-      .forEach((constraint) => g.constraints.push(constraint));
+      .map(constraint => this.deserializeWeekConstraint(constraint))
+      .forEach(constraint => g.constraints.push(constraint));
     return g;
   }
   protected deserializeWeekConstraint(obj: object): WeekConstraint {

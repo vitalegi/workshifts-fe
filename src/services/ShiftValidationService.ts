@@ -15,40 +15,6 @@ abstract class AbstractEmployeeShiftValidator {
     day: Date,
     context: WorkContext
   ): Array<string>;
-
-  @stats("ShiftValidationService.AbstractEmployeeShiftValidator")
-  protected isWeekendWorking(
-    employeeId: number,
-    day: Date,
-    context: WorkContext
-  ): boolean {
-    const sunday = this.dateService.getEndOfWeek(day);
-    const weekend = [this.dateService.addDays(sunday, -1), sunday];
-    const tot = this.workShiftService.countByEmployeesDatesActions(
-      [employeeId],
-      weekend,
-      [Action.MORNING, Action.AFTERNOON, Action.AWAY],
-      context
-    );
-    return tot > 0;
-  }
-  
-  @stats("ShiftValidationService.AbstractEmployeeShiftValidator")
-  protected isPreviousWeekendWorking(
-    employeeId: number,
-    day: Date,
-    context: WorkContext
-  ): boolean {
-    const monday = this.dateService.getStartOfWeek(day);
-    const weekend = [this.dateService.addDays(monday, -2), this.dateService.addDays(monday, -1)];
-    const tot = this.workShiftService.countByEmployeesDatesActions(
-      [employeeId],
-      weekend,
-      [Action.MORNING, Action.AFTERNOON, Action.AWAY],
-      context
-    );
-    return tot > 0;
-  }
 }
 
 class TotalShiftsPerWeek extends AbstractEmployeeShiftValidator {
@@ -73,13 +39,11 @@ class TotalShiftsPerWeek extends AbstractEmployeeShiftValidator {
       context
     );
     const employee = context.getEmployee(employeeId);
-    let expected = employee.totWeekShifts;
-    if (this.isWeekendWorking(employeeId, day, context)) {
-      expected++;
-    }
-    if (this.isPreviousWeekendWorking(employeeId, day, context)) {
-      expected--;
-    }
+    const expected = this.workShiftService.getExpectedEmployeeTotShiftsInWeek(
+      employeeId,
+      day,
+      context
+    );
     if (tot != expected) {
       errors.push(
         `${employee.name} dovrebbe lavorare ${expected} turni in una settimana, presenti ${tot}`
@@ -105,21 +69,22 @@ class MaxShiftByTypePerWeek extends AbstractEmployeeShiftValidator {
     const range = this.dateService.getWeek(day);
 
     const employee = context.getEmployee(employeeId);
-    let expectedMornings = employee.maxWeekMornings;
-    if (this.isWeekendWorking(employeeId, day, context)) {
-      expectedMornings++;
-    }
-    if (this.isPreviousWeekendWorking(employeeId, day, context)) {
-      expectedMornings--;
-    }
-
+    const expectedMornings = this.workShiftService.getExpectedEmployeeMorningShiftsInWeek(
+      employeeId,
+      day,
+      context
+    );
     const actualMornings = this.workShiftService.countByEmployeesDatesAction(
       [employeeId],
       range,
       Action.MORNING,
       context
     );
-    const expectedAfternoons = employee.maxWeekAfternoons;
+    const expectedAfternoons = this.workShiftService.getExpectedEmployeeAfternoonShiftsInWeek(
+      employeeId,
+      day,
+      context
+    );
     const actualAfternoons = this.workShiftService.countByEmployeesDatesAction(
       [employeeId],
       range,
@@ -158,7 +123,7 @@ class MaxCarsPerShift extends AbstractEmployeeShiftValidator {
     const errors = new Array<string>();
 
     const employees = Array.from(context.employees.values()).map(
-      (employee) => employee.id
+      employee => employee.id
     );
 
     const tot = this.workShiftService.countByEmployeesDatesAction(
@@ -205,10 +170,10 @@ abstract class AbstractMinShiftsPerGroup {
 
     const employeeIdsInTargetGroup = Array.from(context.employees.values())
       .filter(
-        (employee) =>
+        employee =>
           this.getGroupByEmployee(employee, context)?.id == targetGroup.id
       )
-      .map((employee) => employee.id);
+      .map(employee => employee.id);
 
     const expectedMinMornings =
       ApplicationContext.getInstance()
@@ -310,7 +275,7 @@ export class ShiftValidationService {
       new TotalShiftsPerWeek(),
       new MaxShiftByTypePerWeek(),
       new MaxCarsPerShift(Action.MORNING),
-      new MaxCarsPerShift(Action.AFTERNOON),
+      new MaxCarsPerShift(Action.AFTERNOON)
     ]);
   }
 
@@ -328,7 +293,7 @@ export class ShiftValidationService {
     context: WorkContext
   ): Array<string> {
     return this.groupErrors(groupId, day, context, [
-      new MinShiftsPerSubGroup(),
+      new MinShiftsPerSubGroup()
     ]);
   }
 
@@ -338,7 +303,7 @@ export class ShiftValidationService {
     context: WorkContext
   ): Array<string> {
     return this.employeeErrors(null, day, context, [
-      new MaxCarsPerShift(action),
+      new MaxCarsPerShift(action)
     ]);
   }
 
@@ -348,7 +313,7 @@ export class ShiftValidationService {
     context: WorkContext,
     validators: Array<AbstractEmployeeShiftValidator>
   ): Array<string> {
-    const errors = validators.flatMap((validator) =>
+    const errors = validators.flatMap(validator =>
       validator.errors(employeeId, day, context)
     );
     this.logger.debug(
@@ -366,7 +331,7 @@ export class ShiftValidationService {
     context: WorkContext,
     validators: Array<AbstractMinShiftsPerGroup>
   ): Array<string> {
-    const errors = validators.flatMap((validator) =>
+    const errors = validators.flatMap(validator =>
       validator.errors(groupId, day, context)
     );
     this.logger.debug(

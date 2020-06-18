@@ -2,7 +2,7 @@
   <div
     :class="{
       'text-center': true,
-      'errors': hasErrors
+      errors: hasErrors
     }"
   >
     <v-menu offset-y>

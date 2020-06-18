@@ -8,14 +8,13 @@ class StatsEntry {
   protected _longCallsCounter = 0;
   protected _durations: number[] = [];
 
-
   public addDuration(duration: number) {
     if (this._durations.length >= durationsSize) {
       this._durations.shift();
     }
     this._durations.push(duration);
     if (duration > longCallThreshold) {
-        this._longCallsCounter++;
+      this._longCallsCounter++;
     }
   }
 
@@ -38,7 +37,7 @@ class StatsEntry {
     return this.counter * this.avg();
   }
   public get longCalls(): number {
-      return this._longCallsCounter;
+    return this._longCallsCounter;
   }
 }
 
@@ -83,14 +82,19 @@ setInterval(() => {
   }
   const logger = factory.getLogger("utils.Stats.stats");
 
-  logger.info(() => `Count\t|\tLong (>= ${longCallThreshold}ms)\t|\tAvg (ms)\t|\tWeight\t|\tName`);
+  logger.info(
+    () =>
+      `Count\t|\tLong (>= ${longCallThreshold}ms)\t|\tAvg (ms)\t|\tWeight\t|\tName`
+  );
   Array.from(StatsCollector.getInstance().entries.entries())
     .sort((a, b) => a[1].weight() - b[1].weight())
     .reverse()
-    .forEach((entry) => {
+    .forEach(entry => {
       logger.info(
         () =>
-          `${entry[1].counter}\t|\t${entry[1].longCalls}\t|\t${entry[1]
+          `${entry[1].counter}\t|\t${
+            entry[1].longCalls
+          }\t|\t${entry[1]
             .avg()
             .toPrecision(4)}\t|\t${entry[1].weight().toPrecision(4)}\t|\t${
             entry[0]

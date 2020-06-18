@@ -27,10 +27,10 @@ export class WorkShiftService {
     action: Action,
     context: WorkContext
   ): number {
-    return employees.flatMap((employeeId) => {
+    return employees.flatMap(employeeId => {
       return dates
-        .map((date) => this.getAction(context, employeeId, date))
-        .filter((a) => a == action);
+        .map(date => this.getAction(context, employeeId, date))
+        .filter(a => a == action);
     }).length;
   }
 
@@ -41,7 +41,7 @@ export class WorkShiftService {
     context: WorkContext
   ): number {
     return actions
-      .map((action) =>
+      .map(action =>
         this.countByEmployeesDatesAction(employees, dates, action, context)
       )
       .reduce((prev, curr) => prev + curr);
@@ -54,8 +54,8 @@ export class WorkShiftService {
   ): boolean {
     return (
       shifts
-        .filter((s) => s.employeeId == employee.id)
-        .filter((s) => s.date == date).length > 0
+        .filter(s => s.employeeId == employee.id)
+        .filter(s => s.date == date).length > 0
     );
   }
 
@@ -80,5 +80,87 @@ export class WorkShiftService {
   rangeEnd(date: Date): Date {
     const endOfMonth = this.dateService.getEndOfMonth(date);
     return this.dateService.getEndOfWeek(endOfMonth);
+  }
+
+  @stats("WorkShiftService")
+  public isWeekendWorking(
+    employeeId: number,
+    day: Date,
+    context: WorkContext
+  ): boolean {
+    const sunday = this.dateService.getEndOfWeek(day);
+    const weekend = [this.dateService.addDays(sunday, -1), sunday];
+    const tot = this.countByEmployeesDatesActions(
+      [employeeId],
+      weekend,
+      [Action.MORNING, Action.AFTERNOON, Action.AWAY],
+      context
+    );
+    return tot > 0;
+  }
+
+  @stats("WorkShiftService")
+  public isPreviousWeekendWorking(
+    employeeId: number,
+    day: Date,
+    context: WorkContext
+  ): boolean {
+    const monday = this.dateService.getStartOfWeek(day);
+    const weekend = [
+      this.dateService.addDays(monday, -2),
+      this.dateService.addDays(monday, -1)
+    ];
+    const tot = this.countByEmployeesDatesActions(
+      [employeeId],
+      weekend,
+      [Action.MORNING, Action.AFTERNOON, Action.AWAY],
+      context
+    );
+    return tot > 0;
+  }
+
+  public getExpectedEmployeeTotShiftsInWeek(
+    employeeId: number,
+    day: Date,
+    context: WorkContext
+  ): number {
+    const range = this.dateService.getWeek(day);
+
+    const employee = context.getEmployee(employeeId);
+    let expected = employee.totWeekShifts;
+    if (this.isWeekendWorking(employeeId, day, context)) {
+      expected++;
+    }
+    if (this.isPreviousWeekendWorking(employeeId, day, context)) {
+      expected--;
+    }
+    return expected;
+  }
+
+  public getExpectedEmployeeMorningShiftsInWeek(
+    employeeId: number,
+    day: Date,
+    context: WorkContext
+  ): number {
+    const range = this.dateService.getWeek(day);
+
+    const employee = context.getEmployee(employeeId);
+    let expected = employee.maxWeekMornings;
+    if (this.isWeekendWorking(employeeId, day, context)) {
+      expected++;
+    }
+    if (this.isPreviousWeekendWorking(employeeId, day, context)) {
+      expected--;
+    }
+    return expected;
+  }
+
+  public getExpectedEmployeeAfternoonShiftsInWeek(
+    employeeId: number,
+    day: Date,
+    context: WorkContext
+  ): number {
+    const employee = context.getEmployee(employeeId);
+    return employee.maxWeekAfternoons;
   }
 }

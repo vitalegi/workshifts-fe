@@ -19,24 +19,23 @@ export class CacheConfig {
     return config;
   }
 
-  public toString():string {
+  public toString(): string {
     return `maxSize: ${this.maxSize} ttl: ${this.ttl}`;
   }
 }
 
 export class CacheConfigFactory {
+  private _instance = new CacheConfig();
 
-  private _instance = new CacheConfig() ;
-
-  public maxSize(maxSize:number):CacheConfigFactory{
+  public maxSize(maxSize: number): CacheConfigFactory {
     this._instance.maxSize = maxSize;
     return this;
   }
-  public ttl(ttl:number):CacheConfigFactory{
+  public ttl(ttl: number): CacheConfigFactory {
     this._instance.ttl = ttl;
     return this;
   }
-  public build():CacheConfig {
+  public build(): CacheConfig {
     return this._instance;
   }
 }
@@ -119,11 +118,11 @@ export class Cache<K, V> {
       .slice(0, numberOfEntriesToBeDeleted);
 
     toBeDeleted
-      .map((entry) => {
+      .map(entry => {
         this.logger.debug(() => `Cleanup: ${entry[0]}`);
         return entry;
       })
-      .forEach((entry) => this.doEvict(entry[0]));
+      .forEach(entry => this.doEvict(entry[0]));
   }
 
   public stats(): string {
@@ -163,8 +162,10 @@ export class CacheManager {
 setInterval(() => {
   const logger = factory.getLogger("utils.Cache.stats");
 
-  Array.from(CacheManager.getInstance().caches.entries()).forEach((cache) => {
-    logger.info(() => `CACHE STATS [${cache[0]}] ${cache[1].stats()} ${cache[1].config}`);
+  Array.from(CacheManager.getInstance().caches.entries()).forEach(cache => {
+    logger.info(
+      () => `CACHE STATS [${cache[0]}] ${cache[1].stats()} ${cache[1].config}`
+    );
     cache[1].resetStats();
   });
 }, 10000);

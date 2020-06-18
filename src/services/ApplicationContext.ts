@@ -3,6 +3,7 @@ import { DateService } from "@/services/DateService";
 import { WorkShiftService } from "@/services/WorkShiftService";
 import { ShiftValidationService } from "@/services/ShiftValidationService";
 import { WeekConstraintService } from "@/services/WeekConstraintService";
+import { OptimizeShiftsService } from "@/services/OptimizeShiftsService";
 
 export class ApplicationContext {
   private _instances: any;
@@ -36,6 +37,12 @@ export class ApplicationContext {
     return this.getService(
       "ShiftValidationService",
       () => new ShiftValidationService()
+    );
+  }
+  public getOptimizeShiftsService(): OptimizeShiftsService {
+    return this.getService(
+      "OptimizeShiftsService",
+      () => new OptimizeShiftsService()
     );
   }
 

@@ -38,6 +38,10 @@
         >Randomize
         <v-icon dark right>mdi-nuke</v-icon>
       </v-btn>
+      <v-btn class="ma-2" color="purple" dark @click="handleOptimize">
+        Optimize
+        <v-icon dark right>mdi-nuke</v-icon>
+      </v-btn>
     </v-row>
   </v-col>
 </template>
@@ -52,7 +56,7 @@ export default class WorkShiftActions extends Vue {
   private validate = true;
 
   handleValidation() {
-    this.logger.info(() => `validation: ${this.validate}`)
+    this.logger.info(() => `validation: ${this.validate}`);
     this.$emit("update-validation", this.validate);
   }
   handleExportJson() {
@@ -69,6 +73,9 @@ export default class WorkShiftActions extends Vue {
   }
   handleRandomize() {
     this.$emit("randomize");
+  }
+  handleOptimize() {
+    this.$emit("optimize");
   }
 }
 </script>

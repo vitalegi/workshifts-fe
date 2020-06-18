@@ -294,7 +294,6 @@
 <script lang="ts">
 import { Component, Prop, Vue } from "vue-property-decorator";
 import WorkShiftInput from "./WorkShiftInput.vue";
-import MonthPicker from "./MonthPicker.vue";
 import { WorkContext } from "@/models/WorkContext";
 import { ApplicationContext } from "@/services/ApplicationContext";
 import { factory } from "@/utils/ConfigLog4j";
@@ -328,7 +327,7 @@ class TableElement {
   }
 }
 
-@Component({ components: { WorkShiftInput, MonthPicker } })
+@Component({ components: { WorkShiftInput } })
 export default class WorkShiftTable extends Vue {
   private logger = factory.getLogger("components.WorkShiftTable");
   @Prop() private context!: WorkContext;
