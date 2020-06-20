@@ -14,7 +14,7 @@ const options = new LoggerFactoryOptions()
   .addLogGroupRule(
     new LogGroupRule(
       new RegExp("services.OptimizeShiftsService"),
-      LogLevel.Debug
+      LogLevel.Info
     )
   )
   .addLogGroupRule(new LogGroupRule(new RegExp("services.+"), LogLevel.Info))

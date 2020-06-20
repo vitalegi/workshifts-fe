@@ -5,7 +5,7 @@ import { StatsCollector } from "./Stats";
 //ms
 const loggerThreshold = 5;
 
-const timestamp = () =>
+export const timestamp = () =>
   window.performance &&
   window.performance.now &&
   window.performance.timing &&

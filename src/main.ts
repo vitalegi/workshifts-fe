@@ -5,6 +5,7 @@ import store from "./store";
 import Vuetify from "vuetify";
 import "vuetify/dist/vuetify.min.css";
 import vuetify from "./plugins/vuetify";
+import axios from "axios";
 
 Vue.use(Vuetify);
 Vue.config.productionTip = false;

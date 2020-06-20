@@ -5,8 +5,11 @@ import { ApplicationContext } from "./ApplicationContext";
 import { Action } from "@/models/Action";
 import { Employee } from "@/models/Employee";
 import { Group } from "@/models/Group";
+import { BackendWebService } from "@/utils/WebService";
 
 const logger = factory.getLogger("services.OptimizeShiftsService");
+
+const MAX_INTEGER = 2147483647;
 
 class Variable {
   public name = "";
@@ -29,7 +32,21 @@ class Coefficient {
     this.coefficient = coefficient;
   }
 }
+class Objective {
+  private _name: string;
+  private _coefficient: number;
 
+  constructor(name: string, coefficient: number) {
+    this._name = name;
+    this._coefficient = coefficient;
+  }
+  public get name() {
+    return this._name;
+  }
+  public get coefficient() {
+    return this._coefficient;
+  }
+}
 class Constraint {
   public context: OptimizationContext;
   public name = "";
@@ -64,9 +81,33 @@ class Constraint {
   }
 }
 
+const constraintToString = (constraint: Constraint) => {
+  const coefficients = constraint.coefficients
+    .map(c => `${c.variable.name} [${c.coefficient}]`)
+    .reduce((prev, curr) => prev + "\n -- " + curr, "");
+  return `${constraint.name}, min/max: ${constraint.min}/${constraint.max}. coefficients:${coefficients}`;
+};
+
+const format = (date: Date) => {
+  const dateService = ApplicationContext.getInstance().getDateService();
+  const dayOfWeek = dateService.getDayOfWeekName(
+    dateService.getDayOfWeek(date)
+  );
+  return dateService.format(date) + "_" + dayOfWeek;
+};
+
+const variable = (employeeId: number, date: Date, action: Action) => {
+  const dateFormatted = format(date);
+  const actionName = ApplicationContext.getInstance()
+    .getActionService()
+    .getActionName(action);
+  return `${employeeId}_${dateFormatted}_${actionName}`;
+};
+
 class OptimizationContext {
   protected variables = new Map<string, Variable>();
   protected constraints = new Map<string, Constraint>();
+  protected objectives = new Array<Objective>();
 
   public addVariable(name: string, min: number, max: number): Variable {
     logger.debug(() => `addVariable [${name}] ${min}/${max}`);
@@ -123,15 +164,22 @@ class OptimizationContext {
   public constraintValues(): Array<Constraint> {
     return Array.from(this.constraints.values());
   }
+  public addObjectiveCoefficient(variable: string, coefficient: number): void {
+    this.objectives.push(new Objective(variable, coefficient));
+  }
+  public getObjectives() {
+    return this.objectives;
+  }
 }
 
-export class OptimizationContextSerializer {
+class OptimizationContextSerializer {
   public serialize(context: OptimizationContext): object {
     const outCtx = {
       variables: context.variableValues().map(v => this.serializeVariable(v)),
       constraints: context
         .constraintValues()
-        .map(c => this.serializeConstraint(c))
+        .map(c => this.serializeConstraint(c)),
+      objective: context.getObjectives().map(o => this.serializeObjective(o))
     };
     return outCtx;
   }
@@ -158,72 +206,18 @@ export class OptimizationContextSerializer {
     (obj as any).coefficient = coefficient.coefficient;
     return obj;
   }
-}
-
-class OptimizeUtil {
-  protected dateService = ApplicationContext.getInstance().getDateService();
-  protected workShiftService = ApplicationContext.getInstance().getWorkShiftService();
-  protected actionService = ApplicationContext.getInstance().getActionService();
-  protected weekConstraintService = ApplicationContext.getInstance().getWeekConstraintService();
-
-  protected format(date: Date): string {
-    const dayOfWeek = this.dateService.getDayOfWeekName(
-      this.dateService.getDayOfWeek(date)
-    );
-    return this.dateService.format(date) + "_" + dayOfWeek;
-  }
-  protected variable(employeeId: number, date: Date, action: Action) {
-    const dateFormatted = this.format(date);
-    const actionName = this.actionService.getActionName(action);
-    return `${employeeId}_${dateFormatted}_${actionName}`;
-  }
-
-  protected oneActivityPerDay(employeeId: number, date: Date): string {
-    return `${employeeId}_${this.format(date)}_one_activity_per_day`;
-  }
-
-  protected employeeWeeklyTotActivities(
-    employeeId: number,
-    week: Array<Date>
-  ): string {
-    return `${employeeId}_${this.format(week[0])}_tot_activities_per_week`;
-  }
-  protected employeeWeeklyMorningActivities(
-    employeeId: number,
-    week: Array<Date>
-  ): string {
-    return `${employeeId}_${this.format(week[0])}_morning_activities_per_week`;
-  }
-  protected employeeWeeklyAfternoonActivities(
-    employeeId: number,
-    week: Array<Date>
-  ): string {
-    return `${employeeId}_${this.format(
-      week[0]
-    )}_afternoon_activities_per_week`;
-  }
-  protected groupDailyActivities(
-    type: string,
-    groupId: number,
-    date: Date,
-    action: Action
-  ): string {
-    const actionName = this.actionService.getActionName(action);
-    return `${type}_${groupId}_${this.format(date)}_${actionName}`;
-  }
-  protected carsDailyActivities(date: Date, action: Action) {
-    const actionName = this.actionService.getActionName(action);
-    return `cars_${this.format(date)}_${actionName}`;
-  }
-  protected constraintToString(constraint: Constraint): string {
-    const coefficients = constraint.coefficients
-      .map(c => `${c.variable.name} [${c.coefficient}]`)
-      .reduce((prev, curr) => prev + "\n -- " + curr, "");
-    return `${constraint.name}, min/max: ${constraint.min}/${constraint.max}. coefficients:${coefficients}`;
+  protected serializeObjective(objective: Objective): object {
+    return {
+      name: objective.name,
+      coefficient: objective.coefficient
+    };
   }
 }
 
-class EmployeeVariable extends OptimizeUtil {
+class EmployeeVariable {
+  private dateService = ApplicationContext.getInstance().getDateService();
+  private workShiftService = ApplicationContext.getInstance().getWorkShiftService();
+
   public apply(
     context: WorkContext,
     opt: OptimizationContext,
@@ -238,33 +232,53 @@ class EmployeeVariable extends OptimizeUtil {
     );
     const action = this.workShiftService.getAction(context, employeeId, date);
     if (action == Action.IDLE) {
-      opt.addVariable(this.variable(employeeId, date, Action.MORNING), 0, 1);
-      opt.addVariable(this.variable(employeeId, date, Action.AFTERNOON), 0, 1);
-      opt.addVariable(this.variable(employeeId, date, Action.AWAY), 0, 0);
-      opt.addVariable(this.variable(employeeId, date, Action.IDLE), 0, 1);
+      this.addVariable(opt, employeeId, date, Action.MORNING, 0, 1);
+      this.addVariable(opt, employeeId, date, Action.AFTERNOON, 0, 1);
+      this.addVariable(opt, employeeId, date, Action.AWAY, 0, 0);
+      this.addVariable(opt, employeeId, date, Action.IDLE, 0, 1);
     }
     if (action == Action.MORNING) {
-      opt.addVariable(this.variable(employeeId, date, Action.MORNING), 1, 1);
-      opt.addVariable(this.variable(employeeId, date, Action.AFTERNOON), 0, 0);
-      opt.addVariable(this.variable(employeeId, date, Action.AWAY), 0, 0);
-      opt.addVariable(this.variable(employeeId, date, Action.IDLE), 0, 0);
+      this.addVariable(opt, employeeId, date, Action.MORNING, 1, 1);
+      this.addVariable(opt, employeeId, date, Action.AFTERNOON, 0, 0);
+      this.addVariable(opt, employeeId, date, Action.AWAY, 0, 0);
+      this.addVariable(opt, employeeId, date, Action.IDLE, 0, 0);
     }
     if (action == Action.AFTERNOON) {
-      opt.addVariable(this.variable(employeeId, date, Action.MORNING), 0, 0);
-      opt.addVariable(this.variable(employeeId, date, Action.AFTERNOON), 1, 1);
-      opt.addVariable(this.variable(employeeId, date, Action.AWAY), 0, 0);
-      opt.addVariable(this.variable(employeeId, date, Action.IDLE), 0, 0);
+      this.addVariable(opt, employeeId, date, Action.MORNING, 0, 0);
+      this.addVariable(opt, employeeId, date, Action.AFTERNOON, 1, 1);
+      this.addVariable(opt, employeeId, date, Action.AWAY, 0, 0);
+      this.addVariable(opt, employeeId, date, Action.IDLE, 0, 0);
     }
     if (action == Action.AWAY) {
-      opt.addVariable(this.variable(employeeId, date, Action.MORNING), 0, 0);
-      opt.addVariable(this.variable(employeeId, date, Action.AFTERNOON), 0, 0);
-      opt.addVariable(this.variable(employeeId, date, Action.AWAY), 1, 1);
-      opt.addVariable(this.variable(employeeId, date, Action.IDLE), 0, 0);
+      this.addVariable(opt, employeeId, date, Action.MORNING, 0, 0);
+      this.addVariable(opt, employeeId, date, Action.AFTERNOON, 0, 0);
+      this.addVariable(opt, employeeId, date, Action.AWAY, 1, 1);
+      this.addVariable(opt, employeeId, date, Action.IDLE, 0, 0);
     }
+  }
+
+  protected addVariable(
+    opt: OptimizationContext,
+    employeeId: number,
+    date: Date,
+    action: Action,
+    min: number,
+    max: number
+  ): void {
+    const name = variable(employeeId, date, action);
+    logger.debug(
+      () =>
+        `EmployeeVariable employeeId[${employeeId}] date[${this.dateService.format(
+          date
+        )}] action[${action}] variable[${name}] ${min}/${max}`
+    );
+    opt.addVariable(name, min, max);
   }
 }
 
-class EmployeeDailyConstraint extends OptimizeUtil {
+class EmployeeDailyConstraint {
+  private dateService = ApplicationContext.getInstance().getDateService();
+
   public apply(
     context: WorkContext,
     opt: OptimizationContext,
@@ -283,20 +297,27 @@ class EmployeeDailyConstraint extends OptimizeUtil {
       1
     );
     constraint
-      .addCoefficient(this.variable(employeeId, date, Action.MORNING), 1)
-      .addCoefficient(this.variable(employeeId, date, Action.AFTERNOON), 1)
-      .addCoefficient(this.variable(employeeId, date, Action.AWAY), 1)
-      .addCoefficient(this.variable(employeeId, date, Action.IDLE), 1);
+      .addCoefficient(variable(employeeId, date, Action.MORNING), 1)
+      .addCoefficient(variable(employeeId, date, Action.AFTERNOON), 1)
+      .addCoefficient(variable(employeeId, date, Action.AWAY), 1)
+      .addCoefficient(variable(employeeId, date, Action.IDLE), 1);
 
     logger.debug(
       () =>
         `EmployeeDailyConstraint employeeId[${employeeId}] date[${this.dateService.format(
           date
-        )}] ==> ${this.constraintToString(constraint)}`
+        )}] ==> ${constraintToString(constraint)}`
     );
   }
+
+  protected oneActivityPerDay(employeeId: number, date: Date): string {
+    return `${employeeId}_${format(date)}_one_activity_per_day`;
+  }
 }
-class EmployeeWeeklyTotConstraint extends OptimizeUtil {
+class EmployeeWeeklyTotConstraint {
+  private dateService = ApplicationContext.getInstance().getDateService();
+  private workShiftService = ApplicationContext.getInstance().getWorkShiftService();
+
   public apply(
     context: WorkContext,
     opt: OptimizationContext,
@@ -320,19 +341,28 @@ class EmployeeWeeklyTotConstraint extends OptimizeUtil {
       expectedTot
     );
     week.forEach(day => {
-      tot.addCoefficient(this.variable(employeeId, day, Action.MORNING), 1);
-      tot.addCoefficient(this.variable(employeeId, day, Action.AFTERNOON), 1);
+      tot.addCoefficient(variable(employeeId, day, Action.MORNING), 1);
+      tot.addCoefficient(variable(employeeId, day, Action.AFTERNOON), 1);
     });
     logger.debug(
       () =>
         `EmployeeWeeklyTotConstraint employeeId[${employeeId}] dates[${week.map(
           date => this.dateService.format(date)
-        )}] ==> ${this.constraintToString(tot)}`
+        )}] ==> ${constraintToString(tot)}`
     );
+  }
+  protected employeeWeeklyTotActivities(
+    employeeId: number,
+    week: Array<Date>
+  ): string {
+    return `${employeeId}_${format(week[0])}_tot_activities_per_week`;
   }
 }
 
-class EmployeeWeeklyMorningsConstraint extends OptimizeUtil {
+class EmployeeWeeklyMorningsConstraint {
+  private dateService = ApplicationContext.getInstance().getDateService();
+  private workShiftService = ApplicationContext.getInstance().getWorkShiftService();
+
   public apply(
     context: WorkContext,
     opt: OptimizationContext,
@@ -356,18 +386,27 @@ class EmployeeWeeklyMorningsConstraint extends OptimizeUtil {
       expectedMornings
     );
     week.forEach(day => {
-      morning.addCoefficient(this.variable(employeeId, day, Action.MORNING), 1);
+      morning.addCoefficient(variable(employeeId, day, Action.MORNING), 1);
     });
     logger.debug(
       () =>
         `EmployeeWeeklyMorningsConstraint employeeId[${employeeId}] dates[${week.map(
           date => this.dateService.format(date)
-        )}] ==> ${this.constraintToString(morning)}`
+        )}] ==> ${constraintToString(morning)}`
     );
+  }
+  protected employeeWeeklyMorningActivities(
+    employeeId: number,
+    week: Array<Date>
+  ): string {
+    return `${employeeId}_${format(week[0])}_morning_activities_per_week`;
   }
 }
 
-class EmployeeWeeklyAfternoonsConstraint extends OptimizeUtil {
+class EmployeeWeeklyAfternoonsConstraint {
+  private dateService = ApplicationContext.getInstance().getDateService();
+  private workShiftService = ApplicationContext.getInstance().getWorkShiftService();
+
   public apply(
     context: WorkContext,
     opt: OptimizationContext,
@@ -391,25 +430,29 @@ class EmployeeWeeklyAfternoonsConstraint extends OptimizeUtil {
       expectedAfternoons
     );
     week.forEach(day => {
-      afternoon.addCoefficient(
-        this.variable(employeeId, day, Action.AFTERNOON),
-        1
-      );
+      afternoon.addCoefficient(variable(employeeId, day, Action.AFTERNOON), 1);
     });
     logger.debug(
       () =>
         `EmployeeWeeklyAfternoonsConstraint employeeId[${employeeId}] dates[${week.map(
           date => this.dateService.format(date)
-        )}] ==> ${this.constraintToString(afternoon)}`
+        )}] ==> ${constraintToString(afternoon)}`
     );
+  }
+  protected employeeWeeklyAfternoonActivities(
+    employeeId: number,
+    week: Array<Date>
+  ): string {
+    return `${employeeId}_${format(week[0])}_afternoon_activities_per_week`;
   }
 }
 
-class CarsDailyConstraint extends OptimizeUtil {
+class CarsDailyConstraint {
+  private dateService = ApplicationContext.getInstance().getDateService();
+  private actionService = ApplicationContext.getInstance().getActionService();
   private _action: Action;
 
   constructor(action: Action) {
-    super();
     this._action = action;
   }
   public apply(
@@ -435,10 +478,7 @@ class CarsDailyConstraint extends OptimizeUtil {
     employees
       .map(e => e.id)
       .forEach(employeeId => {
-        constraint.addCoefficient(
-          this.variable(employeeId, date, this._action),
-          1
-        );
+        constraint.addCoefficient(variable(employeeId, date, this._action), 1);
       });
     logger.debug(
       () =>
@@ -446,16 +486,22 @@ class CarsDailyConstraint extends OptimizeUtil {
           date
         )}] action[${this.actionService.getActionName(
           this._action
-        )}] ==> ${this.constraintToString(constraint)}`
+        )}] ==> ${constraintToString(constraint)}`
     );
+  }
+  protected carsDailyActivities(date: Date, action: Action) {
+    const actionName = this.actionService.getActionName(action);
+    return `cars_${format(date)}_${actionName}`;
   }
 }
 
-abstract class AbstractGroupDailyConstraint extends OptimizeUtil {
+abstract class AbstractGroupDailyConstraint {
+  private dateService = ApplicationContext.getInstance().getDateService();
+  private actionService = ApplicationContext.getInstance().getActionService();
+  private weekConstraintService = ApplicationContext.getInstance().getWeekConstraintService();
   private _action: Action;
 
   constructor(action: Action) {
-    super();
     this._action = action;
   }
 
@@ -479,13 +525,10 @@ abstract class AbstractGroupDailyConstraint extends OptimizeUtil {
     const constraint = opt.addConstraint(
       this.getConstraintName(groupId, date, this._action),
       expectedMin,
-      0
+      MAX_INTEGER
     );
     employeeIds.forEach(employeeId => {
-      constraint.addCoefficient(
-        this.variable(employeeId, date, this._action),
-        1
-      );
+      constraint.addCoefficient(variable(employeeId, date, this._action), 1);
     });
     logger.debug(
       () =>
@@ -493,7 +536,7 @@ abstract class AbstractGroupDailyConstraint extends OptimizeUtil {
           group.name
         }] dates[${this.dateService.format(date)}] ${employeeIds.map(
           id => `employeeId[${id}]`
-        )} ==> ${this.constraintToString(constraint)}`
+        )} ==> ${constraintToString(constraint)}`
     );
   }
 
@@ -519,6 +562,15 @@ abstract class AbstractGroupDailyConstraint extends OptimizeUtil {
         this._action
       ) || 0
     );
+  }
+  protected groupDailyActivities(
+    type: string,
+    groupId: number,
+    date: Date,
+    action: Action
+  ): string {
+    const actionName = this.actionService.getActionName(action);
+    return `${type}_${groupId}_${format(date)}_${actionName}`;
   }
 }
 class GroupDailyConstraint extends AbstractGroupDailyConstraint {
@@ -573,9 +625,29 @@ class SubgroupDailyConstraint extends AbstractGroupDailyConstraint {
     return super.groupDailyActivities("SUBGROUP", groupId, date, action);
   }
 }
-export class OptimizeShiftsService extends OptimizeUtil {
+export class OptimizeShiftsService {
+  private dateService = ApplicationContext.getInstance().getDateService();
+  private workShiftService = ApplicationContext.getInstance().getWorkShiftService();
+
   @stats("OptimizeShiftsService")
-  public optimize(context: WorkContext): OptimizationContext {
+  public optimize(context: WorkContext): void {
+    const opt = this.createOptimizationContext(context);
+    const serializer = new OptimizationContextSerializer();
+
+    const out = new BackendWebService()
+      .url("/workshifts-rest/optimize")
+      .post()
+      .json()
+      .call(serializer.serialize(opt), response => {
+        console.log(response.data);
+        return response;
+      });
+  }
+
+  @stats("OptimizeShiftsService")
+  protected createOptimizationContext(
+    context: WorkContext
+  ): OptimizationContext {
     const opt = new OptimizationContext();
 
     const range = this.range(context.date);
@@ -641,6 +713,14 @@ export class OptimizeShiftsService extends OptimizeUtil {
       });
     });
 
+    [Action.MORNING, Action.AFTERNOON].forEach(action =>
+      range.forEach(date => {
+        context.sortedEmployees().forEach(employeeId => {
+          opt.addObjectiveCoefficient(variable(employeeId, date, action), 1);
+        });
+      })
+    );
+
     if (logger.isDebugEnabled()) {
       opt.constraintNames().forEach(constraintName => {
         const constraint = opt.getConstraint(constraintName);
@@ -651,6 +731,9 @@ export class OptimizeShiftsService extends OptimizeUtil {
           () =>
             `C: ${constraint.name}, min/max: ${constraint.min}/${constraint.max}. coefficients:${coefficients}`
         );
+      });
+      opt.getObjectives().forEach(objective => {
+        logger.debug(() => `O: ${objective.name} ${objective.coefficient}`);
       });
     }
     logger.info(

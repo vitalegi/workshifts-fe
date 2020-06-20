@@ -52,7 +52,6 @@ import MonthPicker from "@/components/MonthPicker.vue";
 import { ContextDeserializer } from "./transformer/ContextDeserializer";
 import { ContextSerializer } from "./transformer/ContextSerializer";
 import { saveAs } from "file-saver";
-import { OptimizationContextSerializer } from "./services/OptimizeShiftsService";
 
 @Component({
   components: {
@@ -127,7 +126,7 @@ export default class App extends Vue {
     App.employee(context, 21, "BEZZI SILVIA", 8, 5, 5, 2);
     App.employee(context, 22, "BRUNELLO VANIA", 8, 5, 5, 2);
 
-    context.availableCars.total = 5;
+    context.availableCars.total = 10;
   }
 
   handleExportExcel() {
@@ -214,20 +213,9 @@ export default class App extends Vue {
   }
   handleOptimize(): void {
     this.logger.info(() => `Optimize`);
-
-    const request = ApplicationContext.getInstance()
+    ApplicationContext.getInstance()
       .getOptimizeShiftsService()
       .optimize(this.context);
-
-    fetch("http://localhost:8081/workshifts-rest/export", {
-      headers: { "Content-Type": "application/json; charset=utf-8" },
-      method: "POST",
-      body: JSON.stringify(
-        new OptimizationContextSerializer().serialize(request)
-      )
-    }).then(response => {
-      this.logger.info(() => `Process`);
-    });
   }
   days(): number {
     return ApplicationContext.getInstance()
@@ -324,7 +312,9 @@ export default class App extends Vue {
     const weekends = [DayOfWeek.SATURDAY, DayOfWeek.SUNDAY];
     weekdays.forEach(day => {
       list.push(WeekConstraint.min(day, Action.MORNING, minMorningsWeekdays));
-      list.push(WeekConstraint.min(day, Action.AFTERNOON, minMorningsWeekdays));
+      list.push(
+        WeekConstraint.min(day, Action.AFTERNOON, minAfternoonsWeekdays)
+      );
     });
     weekends.forEach(day => {
       list.push(WeekConstraint.min(day, Action.MORNING, minMorningsWeekends));
