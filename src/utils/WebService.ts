@@ -71,17 +71,7 @@ export class WebService {
   public post(): WebService {
     return this.method("post");
   }
-  public call(
-    payload: object,
-    onSuccess: (
-      value: AxiosResponse<any>
-    ) =>
-      | AxiosResponse<any>
-      | PromiseLike<AxiosResponse<any>>
-      | null
-      | undefined,
-    onError?: (reason: any) => PromiseLike<never>
-  ) {
+  public call(payload: object) {
     const startTime = timestamp();
 
     const instance = axios.create();
@@ -111,20 +101,12 @@ export class WebService {
       }
     );
 
-    if (onError == undefined) {
-      onError = (reason: any) => {
-        return reason;
-      };
-    }
-
-    instance({
+    return instance({
       url: this._url,
       method: this._method,
       headers: this._headers,
       data: JSON.stringify(payload)
-    })
-      .then(onSuccess)
-      .catch(onError);
+    });
   }
 }
 

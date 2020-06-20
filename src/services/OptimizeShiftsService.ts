@@ -47,6 +47,10 @@ class Objective {
     return this._coefficient;
   }
 }
+class SolutionVariable {
+  public name = "";
+  public value = 0;
+}
 class Constraint {
   public context: OptimizationContext;
   public name = "";
@@ -628,22 +632,28 @@ class SubgroupDailyConstraint extends AbstractGroupDailyConstraint {
 export class OptimizeShiftsService {
   private dateService = ApplicationContext.getInstance().getDateService();
   private workShiftService = ApplicationContext.getInstance().getWorkShiftService();
+  private actionService = ApplicationContext.getInstance().getActionService();
 
   @stats("OptimizeShiftsService")
   public optimize(context: WorkContext): void {
     const opt = this.createOptimizationContext(context);
     const serializer = new OptimizationContextSerializer();
 
-    const out = new BackendWebService()
+    new BackendWebService()
       .url("/workshifts-rest/optimize")
       .post()
       .json()
-      .call(serializer.serialize(opt), response => {
-        console.log(response.data);
-        return response;
+      .call(serializer.serialize(opt))
+      .then(response => {
+        const solutions: SolutionVariable[] = response.data;
+        this.validateSolutions(context, solutions);
+        this.range(context.date).forEach(date => {
+          context.sortedEmployees().forEach(employeeId => {
+            this.updateContext(context, solutions, employeeId, date);
+          });
+        });
       });
   }
-
   @stats("OptimizeShiftsService")
   protected createOptimizationContext(
     context: WorkContext
@@ -743,6 +753,98 @@ export class OptimizeShiftsService {
         } constraints`
     );
     return opt;
+  }
+  @stats("OptimizeShiftsService")
+  protected updateContext(
+    context: WorkContext,
+    solutions: SolutionVariable[],
+    employeeId: number,
+    date: Date
+  ) {
+    const selected = this.actionService
+      .getActions()
+      .map(action => {
+        const value = this.getSolution(solutions, employeeId, date, action);
+        return [action, value];
+      })
+      .filter(e => e[1] == 1)
+      .map(e => e[0]);
+    const newAction = selected.length == 1 ? selected[0] : Action.IDLE;
+    const currAction = this.actionService.getAction(
+      context.getShift(employeeId, date)
+    );
+    if (newAction != currAction) {
+      logger.debug(
+        () =>
+          `Optimization output, update shift employeeId ${employeeId}, date ${this.dateService.format(
+            date
+          )}, ${this.actionService.getActionName(
+            currAction
+          )} ==> ${this.actionService.getActionName(newAction)}`
+      );
+      context.setShift(
+        employeeId,
+        date,
+        this.actionService.getLabels(newAction)[0]
+      );
+    }
+  }
+  @stats("OptimizeShiftsService")
+  protected validateSolutions(
+    context: WorkContext,
+    solutions: SolutionVariable[]
+  ) {
+    this.range(context.date).forEach(date => {
+      context.sortedEmployees().forEach(employeeId => {
+        const values = new Map<Action, number>();
+        this.actionService.getActions().forEach(action => {
+          const value = this.getSolution(solutions, employeeId, date, action);
+          if (value != 0 && value != 1) {
+            throw Error(
+              `employeeId ${employeeId} date ${this.dateService.format(
+                date
+              )} action ${this.actionService.getActionName(
+                action
+              )}, invalid value: ${value}, expected 0 or 1.`
+            );
+          }
+          values.set(action, value);
+        });
+        const selected = Array.from(values.entries())
+          .filter(e => e[1] == 1)
+          .map(e => e[0]);
+        if (selected.length > 1) {
+          throw Error(
+            `employeeId ${employeeId} date ${this.dateService.format(
+              date
+            )}, more than one selection.`
+          );
+        }
+      });
+    });
+  }
+
+  protected getSolution(
+    solutions: SolutionVariable[],
+    employeeId: number,
+    date: Date,
+    action: Action
+  ) {
+    const vars = solutions.filter(
+      o => o.name == variable(employeeId, date, action)
+    );
+    if (vars.length == 1) {
+      return vars[0].value;
+    }
+    logger.info(
+      () =>
+        `employeeId ${employeeId} date ${this.dateService.format(
+          date
+        )} action ${this.actionService.getActionName(
+          action
+        )} doesn't exist in the solution`
+    );
+    return 0;
   }
   protected range(date: Date): Array<Date> {
     return this.dateService.range(this.rangeStart(date), this.rangeEnd(date));

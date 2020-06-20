@@ -120,7 +120,9 @@ export class WorkContext {
   public getShift(
     employeeId: number,
     date: Date,
-    defaultValue: string
+    defaultValue = ApplicationContext.getInstance()
+      .getActionService()
+      .getDefaultLabel()
   ): string {
     // make vue aware of the update
     this.workShifts.length;
