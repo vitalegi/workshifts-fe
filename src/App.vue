@@ -5,7 +5,7 @@
         <h1>Turni Lavorativi</h1>
       </div>
     </v-app-bar>
-
+    <error-dialog />
     <v-content>
       <v-row justify="space-between">
         <MonthPicker
@@ -39,12 +39,12 @@
 import { Component, Vue } from "vue-property-decorator";
 import WorkShiftTable from "@/components/WorkShiftTable.vue";
 import WorkShiftActions from "@/components/WorkShiftActions.vue";
+import ErrorDialog from "@/components/ErrorDialog.vue";
 import { WorkContext } from "@/models/WorkContext";
 import { ApplicationContext } from "@/services/ApplicationContext";
 import { Employee } from "@/models/Employee";
 import { Group } from "@/models/Group";
 import { Subgroup } from "@/models/Subgroup";
-import { DayOfWeek } from "@/utils/DayOfWeek";
 import { Action } from "@/models/Action";
 import { WeekConstraint } from "@/models/WeekConstraint";
 import { factory } from "@/utils/ConfigLog4j";
@@ -52,12 +52,15 @@ import MonthPicker from "@/components/MonthPicker.vue";
 import { ContextDeserializer } from "./transformer/ContextDeserializer";
 import { ContextSerializer } from "./transformer/ContextSerializer";
 import { saveAs } from "file-saver";
+import { BackendWebService } from "./utils/WebService";
+import { ErrorNotification } from "./utils/GlobalNotification";
 
 @Component({
   components: {
     WorkShiftTable,
     MonthPicker,
-    WorkShiftActions
+    WorkShiftActions,
+    ErrorDialog
   }
 })
 export default class App extends Vue {
@@ -132,24 +135,32 @@ export default class App extends Vue {
   handleExportExcel() {
     this.logger.info(() => `Excel export`);
 
-    fetch("http://localhost:8081/workshifts-rest/export", {
-      headers: { "Content-Type": "application/json; charset=utf-8" },
-      method: "POST",
-      body: JSON.stringify(
+    new BackendWebService()
+      .url("/workshifts-rest/export")
+      .responseType("blob")
+      .post()
+      .headerJson()
+      .call(
         new ContextSerializer().serializeContext(
           this.context,
           this.rangeStart(),
           this.rangeEnd()
         )
       )
-    }).then(response => {
-      const blob = response.blob();
-      blob.then(b => {
-        const filename = "export.xlsx";
+      .then(response => {
+        const blob = new Blob([response.data]);
+        const formattedDate = ApplicationContext.getInstance()
+          .getDateService()
+          .formatYYYYMM(this.context.date);
+        const filename = `Turni lavorativi ${formattedDate}.xlsx`;
         this.logger.info(() => `Save file as ${filename}`);
-        saveAs(b, filename);
+        saveAs(blob, filename);
+      })
+      .catch(error => {
+        ApplicationContext.getInstance()
+          .getErrorNotifications()
+          .add(new ErrorNotification("Error", "Error exporting calendar"));
       });
-    });
   }
   handleValidation(validate: boolean) {
     this.logger.info(() => `Validation ${validate}`);
@@ -302,21 +313,14 @@ export default class App extends Vue {
   ): WeekConstraint[] {
     const list = new Array<WeekConstraint>();
 
-    const weekdays = [
-      DayOfWeek.MONDAY,
-      DayOfWeek.TUESDAY,
-      DayOfWeek.WEDNESDAY,
-      DayOfWeek.THURSDAY,
-      DayOfWeek.FRIDAY
-    ];
-    const weekends = [DayOfWeek.SATURDAY, DayOfWeek.SUNDAY];
-    weekdays.forEach(day => {
+    const dateService = ApplicationContext.getInstance().getDateService();
+    dateService.getWeekdays().forEach(day => {
       list.push(WeekConstraint.min(day, Action.MORNING, minMorningsWeekdays));
       list.push(
         WeekConstraint.min(day, Action.AFTERNOON, minAfternoonsWeekdays)
       );
     });
-    weekends.forEach(day => {
+    dateService.getWeekendDays().forEach(day => {
       list.push(WeekConstraint.min(day, Action.MORNING, minMorningsWeekends));
       list.push(
         WeekConstraint.min(day, Action.AFTERNOON, minAfternoonsWeekends)

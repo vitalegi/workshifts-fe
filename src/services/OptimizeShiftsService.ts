@@ -236,10 +236,17 @@ class EmployeeVariable {
     );
     const action = this.workShiftService.getAction(context, employeeId, date);
     if (action == Action.IDLE) {
-      this.addVariable(opt, employeeId, date, Action.MORNING, 0, 1);
-      this.addVariable(opt, employeeId, date, Action.AFTERNOON, 0, 1);
-      this.addVariable(opt, employeeId, date, Action.AWAY, 0, 0);
-      this.addVariable(opt, employeeId, date, Action.IDLE, 0, 1);
+      if (this.dateService.isWeekend(this.dateService.getDayOfWeek(date))) {
+        this.addVariable(opt, employeeId, date, Action.MORNING, 0, 0);
+        this.addVariable(opt, employeeId, date, Action.AFTERNOON, 0, 0);
+        this.addVariable(opt, employeeId, date, Action.AWAY, 0, 0);
+        this.addVariable(opt, employeeId, date, Action.IDLE, 0, 0);
+      } else {
+        this.addVariable(opt, employeeId, date, Action.MORNING, 0, 1);
+        this.addVariable(opt, employeeId, date, Action.AFTERNOON, 0, 1);
+        this.addVariable(opt, employeeId, date, Action.AWAY, 0, 0);
+        this.addVariable(opt, employeeId, date, Action.IDLE, 0, 1);
+      }
     }
     if (action == Action.MORNING) {
       this.addVariable(opt, employeeId, date, Action.MORNING, 1, 1);
@@ -517,6 +524,17 @@ abstract class AbstractGroupDailyConstraint {
   ): void {
     const employeeIds = this.getEmployeeIdsInGroup(context, groupId);
     const group = this.getGroup(context, groupId);
+    if (this.dateService.isWeekend(this.dateService.getDayOfWeek(date))) {
+      logger.debug(
+        () =>
+          `AbstractGroupDailyConstraint groupId[${groupId}][${
+            group.name
+          }] dates[${this.dateService.format(date)}] ${employeeIds.map(
+            id => `employeeId[${id}], is a weekend, skip constraint.`
+          )}`
+      );
+      return;
+    }
     logger.debug(
       () =>
         `AbstractGroupDailyConstraint groupId[${groupId}][${
@@ -642,14 +660,19 @@ export class OptimizeShiftsService {
     new BackendWebService()
       .url("/workshifts-rest/optimize")
       .post()
-      .json()
+      .headerJson()
       .call(serializer.serialize(opt))
       .then(response => {
         const solutions: SolutionVariable[] = response.data;
-        this.validateSolutions(context, solutions);
+        const fastSolutions = new Map<string, number>();
+        solutions.forEach(solution =>
+          fastSolutions.set(solution.name, solution.value)
+        );
+
+        this.validateSolutions(context, fastSolutions);
         this.range(context.date).forEach(date => {
           context.sortedEmployees().forEach(employeeId => {
-            this.updateContext(context, solutions, employeeId, date);
+            this.updateContext(context, fastSolutions, employeeId, date);
           });
         });
       });
@@ -757,7 +780,7 @@ export class OptimizeShiftsService {
   @stats("OptimizeShiftsService")
   protected updateContext(
     context: WorkContext,
-    solutions: SolutionVariable[],
+    solutions: Map<string, number>,
     employeeId: number,
     date: Date
   ) {
@@ -792,12 +815,16 @@ export class OptimizeShiftsService {
   @stats("OptimizeShiftsService")
   protected validateSolutions(
     context: WorkContext,
-    solutions: SolutionVariable[]
+    solutions: Map<string, number>
   ) {
-    this.range(context.date).forEach(date => {
-      context.sortedEmployees().forEach(employeeId => {
+    const range = this.range(context.date);
+    const employees = context.sortedEmployees();
+    const actions = this.actionService.getActions();
+
+    range.forEach(date => {
+      employees.forEach(employeeId => {
         const values = new Map<Action, number>();
-        this.actionService.getActions().forEach(action => {
+        actions.forEach(action => {
           const value = this.getSolution(solutions, employeeId, date, action);
           if (value != 0 && value != 1) {
             throw Error(
@@ -824,17 +851,16 @@ export class OptimizeShiftsService {
     });
   }
 
+  @stats("OptimizeShiftsService")
   protected getSolution(
-    solutions: SolutionVariable[],
+    solutions: Map<string, number>,
     employeeId: number,
     date: Date,
     action: Action
-  ) {
-    const vars = solutions.filter(
-      o => o.name == variable(employeeId, date, action)
-    );
-    if (vars.length == 1) {
-      return vars[0].value;
+  ): number {
+    const key = variable(employeeId, date, action);
+    if (solutions.has(key)) {
+      return solutions.get(key) as number;
     }
     logger.info(
       () =>

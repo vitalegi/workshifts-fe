@@ -27,6 +27,17 @@ export class WebService {
     | "UNLINK"
     | undefined = undefined;
   private _headers: any = {};
+  private _responseType:
+    | "json"
+    | "arraybuffer"
+    | "blob"
+    | "document"
+    | "text"
+    | "stream"
+    | undefined = "json";
+
+  private _requestSerializer: (request: object) => any = (request: object) =>
+    JSON.stringify(request);
 
   public url(url: string): WebService {
     this._url = url;
@@ -36,7 +47,20 @@ export class WebService {
     this._headers[name] = value;
     return this;
   }
-  public json(): WebService {
+  public responseType(
+    responseType:
+      | "json"
+      | "arraybuffer"
+      | "blob"
+      | "document"
+      | "text"
+      | "stream"
+      | undefined
+  ): WebService {
+    this._responseType = responseType;
+    return this;
+  }
+  public headerJson(): WebService {
     this.header("Content-Type", "application/json; charset=utf-8");
     return this;
   }
@@ -71,6 +95,11 @@ export class WebService {
   public post(): WebService {
     return this.method("post");
   }
+  public requestSerializer(serializer: (request: object) => any): WebService {
+    this._requestSerializer = serializer;
+    return this;
+  }
+
   public call(payload: object) {
     const startTime = timestamp();
 
@@ -105,7 +134,8 @@ export class WebService {
       url: this._url,
       method: this._method,
       headers: this._headers,
-      data: JSON.stringify(payload)
+      responseType: this._responseType,
+      data: this._requestSerializer(payload)
     });
   }
 }
@@ -126,8 +156,12 @@ export class BackendWebService extends WebService {
 
   public url(url: string): WebService {
     const fullUrl = this.getBackendUrl() + url;
-    console.log(this.getBackendUrl(), url);
-    console.log(window.location);
+    this.logger.debug(
+      () =>
+        `BackendURL: ${this.getBackendUrl()} URL: ${url} WindowLocation: ${
+          window.location
+        }`
+    );
     return super.url(fullUrl);
   }
   protected getBackendUrl(): string {
@@ -139,7 +173,10 @@ export class BackendWebService extends WebService {
     if (configs.length == 1) {
       return configs[0].backendUrl;
     }
-    throw new Error(`Unrecognized environment: ${url}`);
+    this.logger.error(
+      () => `Unrecognized environment: ${url}. Fallback to default.`
+    );
+    return url;
   }
   protected getCurrentUrl(): string {
     return (

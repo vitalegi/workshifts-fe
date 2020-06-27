@@ -4,11 +4,11 @@ import { DayOfWeek } from "@/utils/DayOfWeek";
 export class DateService {
   private logger = factory.getLogger("services.DateService");
   public isStartOfWeek(date: Date) {
-    return date.getDay() == 1;
+    return this.getDayOfWeek(date) == DayOfWeek.MONDAY;
   }
 
   public isEndOfWeek(date: Date) {
-    return date.getDay() == 0;
+    return this.getDayOfWeek(date) == DayOfWeek.SUNDAY;
   }
 
   public getStartOfMonth(date: Date) {
@@ -142,32 +142,22 @@ export class DateService {
     const month = date.getMonth() + 1;
     const day = date.getDate();
 
-    let formatted = year + "-";
-    if (month < 10) {
-      formatted += "0";
-    }
-    formatted += month + "-";
-    if (day < 10) {
-      formatted += "0";
-    }
-    formatted += day;
-    return formatted;
+    const padding = (n: number) => this.leftPadding("" + n, "0", 2);
+    return `${year}-${padding(month)}-${padding(day)}`;
   }
 
   public formatShort(date: Date) {
     const month = date.getMonth() + 1;
     const day = date.getDate();
+    const padding = (n: number) => this.leftPadding("" + n, "0", 2);
+    return `${padding(day)}-${padding(month)}`;
+  }
 
-    let formatted = "";
-    if (day < 10) {
-      formatted += "0";
-    }
-    formatted += day + "-";
-    if (month < 10) {
-      formatted += "0";
-    }
-    formatted += month;
-    return formatted;
+  public formatYYYYMM(date: Date): string {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const padding = (n: number) => this.leftPadding("" + n, "0", 2);
+    return `${year}-${padding(month)}`;
   }
 
   public isValidDate(date: Date): boolean {
@@ -235,5 +225,34 @@ export class DateService {
     const clone = this.clone(date);
     clone.setDate(clone.getDate() + days);
     return clone;
+  }
+  public getWeekendDays(): DayOfWeek[] {
+    return this.getDaysOfWeek().filter(dayOfWeek => this.isWeekend(dayOfWeek));
+  }
+  public getWeekdays(): DayOfWeek[] {
+    return this.getDaysOfWeek().filter(dayOfWeek => !this.isWeekend(dayOfWeek));
+  }
+  public isWeekend(dayOfWeek: DayOfWeek): boolean {
+    switch (dayOfWeek) {
+      case DayOfWeek.MONDAY:
+      case DayOfWeek.TUESDAY:
+      case DayOfWeek.WEDNESDAY:
+      case DayOfWeek.THURSDAY:
+      case DayOfWeek.FRIDAY:
+        return false;
+      default:
+        return true;
+    }
+  }
+
+  protected leftPadding(
+    str: string,
+    paddingString: string,
+    padding: number
+  ): string {
+    while (str.length < padding) {
+      str = paddingString + str;
+    }
+    return str;
   }
 }

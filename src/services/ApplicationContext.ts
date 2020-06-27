@@ -4,6 +4,10 @@ import { WorkShiftService } from "@/services/WorkShiftService";
 import { ShiftValidationService } from "@/services/ShiftValidationService";
 import { WeekConstraintService } from "@/services/WeekConstraintService";
 import { OptimizeShiftsService } from "@/services/OptimizeShiftsService";
+import {
+  GlobalNotification,
+  ErrorNotification
+} from "@/utils/GlobalNotification";
 
 export class ApplicationContext {
   private _instances: any;
@@ -50,6 +54,13 @@ export class ApplicationContext {
     return this.getService(
       "WeekConstraintService",
       () => new WeekConstraintService()
+    );
+  }
+
+  public getErrorNotifications(): GlobalNotification<ErrorNotification> {
+    return this.getService(
+      "GlobalNotification",
+      () => new GlobalNotification<ErrorNotification>()
     );
   }
 
