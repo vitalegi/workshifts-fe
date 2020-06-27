@@ -1,6 +1,7 @@
 import { factory } from "@/utils/ConfigLog4j";
 import { timestamp } from "@/utils/Decorators";
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
+import EventBus from "./EventBus";
 
 export class WebService {
   protected logger = factory.getLogger("utils.WebService");
@@ -35,6 +36,7 @@ export class WebService {
     | "text"
     | "stream"
     | undefined = "json";
+  private _spinner = true;
 
   private _requestSerializer: (request: object) => any = (request: object) =>
     JSON.stringify(request);
@@ -100,16 +102,20 @@ export class WebService {
     return this;
   }
 
+  public spinner(spinner: boolean): WebService {
+    this._spinner = spinner;
+    return this;
+  }
+
   public call(payload: object) {
     const startTime = timestamp();
-
+    const callName = this._url;
     const instance = axios.create();
 
     instance.interceptors.request.use((config: AxiosRequestConfig) => {
       this.logger.debug(() => `Call ${config.url} start`);
       return config;
     });
-
     instance.interceptors.response.use(
       (response: AxiosResponse<any>) => {
         const duration = timestamp() - startTime;
@@ -127,6 +133,28 @@ export class WebService {
         throw new Error(
           `Call ${error.config.url} failed, status: ${error.response.status}`
         );
+      }
+    );
+
+    instance.interceptors.request.use((config: AxiosRequestConfig) => {
+      if (this._spinner) {
+        EventBus.$emit("ASYNC_ACTION_START", callName);
+      }
+      return config;
+    });
+
+    instance.interceptors.response.use(
+      (response: AxiosResponse<any>) => {
+        if (this._spinner) {
+          EventBus.$emit("ASYNC_ACTION_END", callName);
+        }
+        return response;
+      },
+      (error: any) => {
+        if (this._spinner) {
+          EventBus.$emit("ASYNC_ACTION_END", callName);
+        }
+        throw error;
       }
     );
 

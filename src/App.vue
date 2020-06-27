@@ -6,6 +6,7 @@
       </div>
     </v-app-bar>
     <error-dialog />
+    <loader-dialog />
     <v-content>
       <v-row justify="space-between">
         <MonthPicker
@@ -40,6 +41,7 @@ import { Component, Vue } from "vue-property-decorator";
 import WorkShiftTable from "@/components/WorkShiftTable.vue";
 import WorkShiftActions from "@/components/WorkShiftActions.vue";
 import ErrorDialog from "@/components/ErrorDialog.vue";
+import LoaderDialog from "@/components/LoaderDialog.vue";
 import { WorkContext } from "@/models/WorkContext";
 import { ApplicationContext } from "@/services/ApplicationContext";
 import { Employee } from "@/models/Employee";
@@ -60,7 +62,8 @@ import { ErrorNotification } from "./utils/GlobalNotification";
     WorkShiftTable,
     MonthPicker,
     WorkShiftActions,
-    ErrorDialog
+    ErrorDialog,
+    LoaderDialog
   }
 })
 export default class App extends Vue {
