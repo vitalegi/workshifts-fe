@@ -175,8 +175,8 @@ export class BackendWebService extends WebService {
     },
     {
       env: "prod",
-      frontendUrls: ["http://vitalegi.ovh", "https://vitalegi.ovh"],
-      backendUrl: "https://vitalegi.ovh"
+      frontendUrls: ["http://vitalegi.ovh:3000", "https://vitalegi.ovh:3000"],
+      backendUrl: "https://vitalegi.ovh:3000"
     }
   ];
 
