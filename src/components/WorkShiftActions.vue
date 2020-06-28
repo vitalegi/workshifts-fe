@@ -18,26 +18,48 @@
         min-width="290px"
       >
         <template v-slot:activator="{ on }">
-          <v-btn class="ma-2" color="primary" dark v-on="on"
-            >Open
+          <v-btn class="ma-2" color="primary" dark v-on="on">
+            Open
             <v-icon dark right>mdi-file</v-icon>
           </v-btn>
         </template>
         <v-file-input label="Import" @change="handleImportJson" />
       </v-menu>
 
-      <v-btn class="ma-2" color="purple" dark @click="handleExportExcel"
-        >Print
+      <v-btn class="ma-2" color="purple" dark @click="handleExportExcel">
+        Print
         <v-icon dark right>mdi-file-excel</v-icon>
       </v-btn>
-      <v-btn class="ma-2" color="red" dark @click="handleClearData"
-        >Delete
-        <v-icon dark right>mdi-delete</v-icon>
-      </v-btn>
-      <v-btn class="ma-2" color="purple" dark @click="handleRandomize"
-        >Randomize
-        <v-icon dark right>mdi-nuke</v-icon>
-      </v-btn>
+
+      <v-dialog v-model="deleteDialog" persistent max-width="600px">
+        <template v-slot:activator="{ on, attrs }">
+          <v-btn class="ma-2" color="red" dark v-bind="attrs" v-on="on">
+            Delete
+            <v-icon dark right>mdi-delete</v-icon>
+          </v-btn>
+        </template>
+        <v-card>
+          <v-card-title>
+            <span class="headline">Confirm deletion?</span>
+          </v-card-title>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn color="blue darken-1" text @click="deleteDialog = false"
+              >Cancel</v-btn
+            >
+            <v-btn
+              color="blue darken-1"
+              text
+              @click="
+                deleteDialog = false;
+                handleClearData();
+              "
+              >Confirm</v-btn
+            >
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
       <v-btn class="ma-2" color="purple" dark @click="handleOptimize">
         Optimize
         <v-icon dark right>mdi-nuke</v-icon>
@@ -54,6 +76,7 @@ import { factory } from "@/utils/ConfigLog4j";
 export default class WorkShiftActions extends Vue {
   private logger = factory.getLogger("WorkShiftActions");
   private validate = true;
+  private deleteDialog = false;
 
   handleValidation() {
     this.logger.info(() => `validation: ${this.validate}`);
@@ -70,9 +93,6 @@ export default class WorkShiftActions extends Vue {
   }
   handleClearData() {
     this.$emit("clear-data");
-  }
-  handleRandomize() {
-    this.$emit("randomize");
   }
   handleOptimize() {
     this.$emit("optimize");

@@ -146,13 +146,13 @@ export class WebService {
     instance.interceptors.response.use(
       (response: AxiosResponse<any>) => {
         if (this._spinner) {
-          EventBus.$emit("ASYNC_ACTION_END", callName);
+          EventBus.$emit("ASYNC_ACTION_END", `${callName} ok`);
         }
         return response;
       },
       (error: any) => {
         if (this._spinner) {
-          EventBus.$emit("ASYNC_ACTION_END", callName);
+          EventBus.$emit("ASYNC_ACTION_END", `${callName} ko`);
         }
         throw error;
       }

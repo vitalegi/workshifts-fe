@@ -109,7 +109,11 @@ export class WorkContext {
         dateService.format(s.date) == dateService.format(date)
     );
     this.workShifts.push(new Shift(employeeId, date, value));
+    this.setShiftMap(employeeId, date, value);
+  }
 
+  protected setShiftMap(employeeId: number, date: Date, value: string) {
+    const dateService = ApplicationContext.getInstance().getDateService();
     const map = this._workShiftsMap;
     if (!map.has(employeeId)) {
       map.set(employeeId, new Map<string, string>());
@@ -138,8 +142,18 @@ export class WorkContext {
   }
 
   public deleteShifts(): void {
+    const from = ApplicationContext.getInstance()
+      .getWorkShiftService()
+      .rangeStart(this.date);
+    const to = ApplicationContext.getInstance()
+      .getWorkShiftService()
+      .rangeEnd(this.date);
+
+    this.workShifts = this.workShifts.filter(s => s.date < from || s.date > to);
     this._workShiftsMap = new Map<number, Map<string, string>>();
-    this.workShifts.splice(0, this.workShifts.length);
+    this.workShifts.forEach(shift =>
+      this.setShiftMap(shift.employeeId, shift.date, shift.value)
+    );
   }
   public set date(date: Date) {
     this._date = date;

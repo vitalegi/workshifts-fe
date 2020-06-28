@@ -40,31 +40,26 @@ export default Vue.extend({
   computed: {
     hasErrors: {
       set(value: boolean) {
-        logger.info(() => `Set hasErrors: ${value}`);
-        //this.acceptMessage();
+        logger.debug(() => `Set hasErrors: ${value}`);
       },
       get(): boolean {
         const hasErrors = this.notifications.has();
-        logger.info(() => `hasErrors: ${hasErrors}`);
+        logger.debug(() => `hasErrors: ${hasErrors}`);
         return this.notifications.has();
       }
     },
     title(): string {
       if (this.notifications.has()) {
         const title = this.notifications.get().title;
-        logger.info(() => `title: ${title}`);
         return title;
       }
-      logger.info(() => `No title!`);
       return "";
     },
     message(): string {
       if (this.notifications.has()) {
         const message = this.notifications.get().message;
-        logger.info(() => `message: ${message}`);
         return message;
       }
-      logger.info(() => `No message!`);
       return "";
     }
   },
@@ -77,7 +72,7 @@ export default Vue.extend({
   watch: {
     notifications: {
       handler: (notification: GlobalNotification<ErrorNotification>) => {
-        logger.info(() => `Changed notifications ${notification.count()}`);
+        logger.info(() => `Remaining notifications ${notification.count()}`);
       },
       deep: true
     }

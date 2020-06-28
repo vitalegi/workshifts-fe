@@ -19,7 +19,6 @@
           @import-json="handleImportJson"
           @export-excel="handleExportExcel"
           @clear-data="handleClearData"
-          @randomize="handleRandomize"
           @optimize="handleOptimize"
         />
       </v-row>
@@ -212,18 +211,6 @@ export default class App extends Vue {
   }
   handleClearData(): void {
     this.context.deleteShifts();
-  }
-  handleRandomize(): void {
-    const employeeIds = this.context.sortedEmployees();
-    const days = this.days();
-    const labels = ["M", "M*", "P", "P*", "mal"];
-    const random = (size: number) => Math.floor(Math.random() * size);
-    for (let i = 0; i < 500; i++) {
-      const employeeId = employeeIds[random(employeeIds.length)];
-      const day = this.day(random(days - 1) + 1);
-      const label = labels[random(labels.length)];
-      this.handleShift(employeeId, day, label);
-    }
   }
   handleOptimize(): void {
     this.logger.info(() => `Optimize`);
