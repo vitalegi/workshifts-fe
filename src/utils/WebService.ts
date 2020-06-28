@@ -130,9 +130,7 @@ export class WebService {
         this.logger.error(
           () => `Call ${error.config.url} failed [${duration}]`
         );
-        throw new Error(
-          `Call ${error.config.url} failed, status: ${error.response.status}`
-        );
+        throw { data: error.response.data };
       }
     );
 

@@ -6,10 +6,12 @@ export interface Notification {
 export class ErrorNotification implements Notification {
   public title = "";
   public message = "";
+  public wsError: any;
 
-  constructor(title: string, message: string) {
+  constructor(title: string, message: string, wsError?: any) {
     this.title = title;
     this.message = message;
+    this.wsError = wsError;
   }
 }
 
@@ -25,13 +27,13 @@ export class GlobalNotification<E extends Notification> {
   public has(): boolean {
     return this.notifications.length > 0;
   }
-  public pop(): Notification {
+  public pop(): E {
     if (!this.has()) {
       throw new Error(`Empty list`);
     }
     return this.notifications.splice(0, 1)[0];
   }
-  public get(): Notification {
+  public get(): E {
     if (!this.has()) {
       throw new Error(`Empty list`);
     }

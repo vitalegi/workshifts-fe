@@ -6,6 +6,7 @@ import { Action } from "@/models/Action";
 import { Employee } from "@/models/Employee";
 import { Group } from "@/models/Group";
 import { BackendWebService } from "@/utils/WebService";
+import { ErrorNotification } from '@/utils/GlobalNotification';
 
 const logger = factory.getLogger("services.OptimizeShiftsService");
 
@@ -675,6 +676,11 @@ export class OptimizeShiftsService {
             this.updateContext(context, fastSolutions, employeeId, date);
           });
         });
+      })
+      .catch(error => {
+        ApplicationContext.getInstance()
+          .getErrorNotifications()
+          .add(new ErrorNotification("Error", "Error optimizing shift"));
       });
   }
   @stats("OptimizeShiftsService")

@@ -57,7 +57,11 @@ export default Vue.extend({
     },
     message(): string {
       if (this.notifications.has()) {
-        const message = this.notifications.get().message;
+        const notification = this.notifications.get();
+        let message = notification.message;
+        if (notification.wsError && notification.wsError.message) {
+          message += " - " + notification.wsError.message;
+        }
         return message;
       }
       return "";
